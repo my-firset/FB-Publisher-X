@@ -21,6 +21,8 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.WindowCompat;
 
+import com.google.android.material.bottomnavigation.BottomNavigationView;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,6 +37,7 @@ public class MainActivity extends AppCompatActivity {
 
     private WebView webView;
     private ProgressBar progressBar;
+    private BottomNavigationView bottomNav;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private final List<PostTask> queue = new ArrayList<>();
@@ -43,6 +46,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean showingDashboard = true;
     private long delayBetweenPostsMs = 45000;
     private String currentGroupLabel = "";
+    private int currentTab = R.id.nav_home;
 
     public static class PostTask {
         public final String groupUrl;
@@ -62,9 +66,56 @@ public class MainActivity extends AppCompatActivity {
 
         webView = findViewById(R.id.webview);
         progressBar = findViewById(R.id.progressBar);
+        bottomNav = findViewById(R.id.bottomNav);
 
         setupWebView();
+        setupBottomNav();
+
         webView.loadUrl(DASHBOARD_URL);
+        bottomNav.setSelectedItemId(R.id.nav_home);
+    }
+
+    private void setupBottomNav() {
+        bottomNav.setOnItemSelectedListener(item -> {
+            int id = item.getItemId();
+            currentTab = id;
+
+            if (id == R.id.nav_home) {
+                // Dashboard HTML
+                isPosting = false;
+                webView.loadUrl(DASHBOARD_URL);
+                return true;
+            }
+            if (id == R.id.nav_facebook) {
+                // Facebook login / session
+                webView.loadUrl(FB_HOME);
+                return true;
+            }
+            if (id == R.id.nav_queue) {
+                // Reuse dashboard, jump to groups/queue feel via dashboard
+                webView.loadUrl(DASHBOARD_URL);
+                mainHandler.postDelayed(() -> {
+                    webView.evaluateJavascript(
+                            "document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));" +
+                            "document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));" +
+                            "var t=document.querySelector('[data-tab=groups]'); if(t){t.classList.add('active');}" +
+                            "var p=document.getElementById('panel-groups'); if(p) p.classList.add('active');", null);
+                }, 400);
+                return true;
+            }
+            if (id == R.id.nav_settings) {
+                webView.loadUrl(DASHBOARD_URL);
+                mainHandler.postDelayed(() -> {
+                    webView.evaluateJavascript(
+                            "document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));" +
+                            "document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));" +
+                            "var t=document.querySelector('[data-tab=settings]'); if(t){t.classList.add('active');}" +
+                            "var p=document.getElementById('panel-settings'); if(p) p.classList.add('active');", null);
+                }, 400);
+                return true;
+            }
+            return false;
+        });
     }
 
     private void setupWebView() {
@@ -122,8 +173,11 @@ public class MainActivity extends AppCompatActivity {
                 if (url.contains("facebook.com") || url.contains("fb.com")) {
                     injectDomHelpers(view);
                     if (isPosting && currentIndex >= 0 && currentIndex < queue.size()) {
-                        PostTask task = queue.get(currentIndex);
-                        mainHandler.postDelayed(() -> executePostOnPage(task.text), 2800);
+                        mainHandler.postDelayed(() -> {
+                            if (currentIndex < queue.size()) {
+                                executePostOnPage(queue.get(currentIndex).text);
+                            }
+                        }, 2800);
                     }
                 }
             }
@@ -170,7 +224,6 @@ public class MainActivity extends AppCompatActivity {
             "      },1400);" +
             "    } catch(e){ AndroidBridge.onPostResult(false,String(e)); }" +
             "  };" +
-            "  console.log('[FBX] DOM helpers ready');" +
             "})();";
         view.evaluateJavascript(js, null);
     }
@@ -190,13 +243,14 @@ public class MainActivity extends AppCompatActivity {
             isPosting = false;
             mainHandler.post(() -> {
                 Toast.makeText(this, "انتهى الطابور", Toast.LENGTH_LONG).show();
+                bottomNav.setSelectedItemId(R.id.nav_home);
                 webView.loadUrl(DASHBOARD_URL);
             });
             return;
         }
         PostTask task = queue.get(currentIndex);
         currentGroupLabel = task.groupUrl;
-        Log.i(TAG, "Group " + (currentIndex + 1) + "/" + queue.size() + " -> " + task.groupUrl);
+        Log.i(TAG, "Group " + (currentIndex + 1) + "/" + queue.size());
         webView.loadUrl(task.groupUrl);
     }
 
@@ -208,7 +262,6 @@ public class MainActivity extends AppCompatActivity {
         @JavascriptInterface
         public void addTask(String groupUrl, String text) {
             queue.add(new PostTask(groupUrl, text));
-            Log.i(TAG, "Task added: " + groupUrl);
         }
 
         @JavascriptInterface
@@ -241,19 +294,22 @@ public class MainActivity extends AppCompatActivity {
             isPosting = false;
             mainHandler.post(() -> {
                 Toast.makeText(MainActivity.this, "تم إيقاف النشر", Toast.LENGTH_SHORT).show();
+                bottomNav.setSelectedItemId(R.id.nav_home);
                 webView.loadUrl(DASHBOARD_URL);
             });
         }
 
         @JavascriptInterface
         public void openFacebook() {
-            mainHandler.post(() -> webView.loadUrl(FB_HOME));
+            mainHandler.post(() -> {
+                bottomNav.setSelectedItemId(R.id.nav_facebook);
+                webView.loadUrl(FB_HOME);
+            });
         }
 
         @JavascriptInterface
         public void detectSession() {
             mainHandler.post(() -> {
-                // Simple heuristic: if we have FB cookies, consider logged in
                 String cookies = CookieManager.getInstance().getCookie("https://m.facebook.com");
                 boolean ok = cookies != null && (cookies.contains("c_user=") || cookies.contains("xs="));
                 webView.evaluateJavascript("window.setSessionStatus && window.setSessionStatus(" + ok + ");", null);
@@ -271,15 +327,15 @@ public class MainActivity extends AppCompatActivity {
             Log.i(TAG, "Post result: " + success + " / " + message);
             final String label = currentGroupLabel;
             mainHandler.post(() -> {
-                String js = "window.onNativePostResult && window.onNativePostResult(" +
-                        success + ",'" + message.replace("'", "\\'") + "','" +
-                        (label != null ? label.replace("'", "\\'") : "") + "');";
-                // If we are still on FB page, go back to dashboard after a short delay for next item
                 if (isPosting) {
                     scheduleNextAfterDelay();
                 } else {
+                    bottomNav.setSelectedItemId(R.id.nav_home);
                     webView.loadUrl(DASHBOARD_URL);
-                    mainHandler.postDelayed(() -> webView.evaluateJavascript(js, null), 600);
+                    String js = "window.onNativePostResult && window.onNativePostResult(" +
+                            success + ",'" + message.replace("'", "\\'") + "','" +
+                            (label != null ? label.replace("'", "\\'") : "") + "');";
+                    mainHandler.postDelayed(() -> webView.evaluateJavascript(js, null), 500);
                 }
             });
         }
@@ -292,12 +348,16 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (!showingDashboard) {
+        if (!showingDashboard && currentTab != R.id.nav_home) {
+            bottomNav.setSelectedItemId(R.id.nav_home);
             webView.loadUrl(DASHBOARD_URL);
             return;
         }
-        if (webView.canGoBack()) webView.goBack();
-        else super.onBackPressed();
+        if (webView.canGoBack()) {
+            webView.goBack();
+        } else {
+            super.onBackPressed();
+        }
     }
 
     @Override
