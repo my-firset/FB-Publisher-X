@@ -4,7 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background"
-    android:fillViewport="true">
+    android:fillViewport="true"
+    android:layoutDirection="rtl">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -15,21 +16,95 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Publisher X"
+            android:text="@string/dash_title"
             android:textColor="@color/on_background"
             android:textSize="26sp"
             android:textStyle="bold"
-            android:layout_marginBottom="4dp" />
+            android:layout_marginBottom="4dp"
+            android:gravity="start" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Marketing Campaign Dashboard"
+            android:text="@string/dash_subtitle"
             android:textColor="@color/text_secondary"
             android:textSize="14sp"
-            android:layout_marginBottom="24dp" />
+            android:layout_marginBottom="24dp"
+            android:gravity="start" />
 
-        <!-- Stats Row -->
+        <!-- Stats Row 1 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="12dp">
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                app:cardBackgroundColor="@color/surface"
+                app:cardCornerRadius="12dp"
+                app:strokeColor="@color/card_stroke"
+                app:strokeWidth="1dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="14dp"
+                    android:gravity="center">
+                    <TextView
+                        android:id="@+id/statGroups"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0"
+                        android:textColor="@color/primary"
+                        android:textSize="26sp"
+                        android:textStyle="bold" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/stat_groups"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                app:cardBackgroundColor="@color/surface"
+                app:cardCornerRadius="12dp"
+                app:strokeColor="@color/card_stroke"
+                app:strokeWidth="1dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="14dp"
+                    android:gravity="center">
+                    <TextView
+                        android:id="@+id/statPosted"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0"
+                        android:textColor="@color/success"
+                        android:textSize="26sp"
+                        android:textStyle="bold" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/stat_posted"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+
+        <!-- Stats Row 2 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -40,7 +115,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="6dp"
                 app:cardBackgroundColor="@color/surface"
                 app:cardCornerRadius="12dp"
                 app:strokeColor="@color/card_stroke"
@@ -49,20 +124,20 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp"
+                    android:padding="14dp"
                     android:gravity="center">
                     <TextView
-                        android:id="@+id/statGroups"
+                        android:id="@+id/statFailed"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="0"
-                        android:textColor="@color/primary"
-                        android:textSize="28sp"
+                        android:textColor="@color/error"
+                        android:textSize="26sp"
                         android:textStyle="bold" />
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Groups"
+                        android:text="@string/stat_failed"
                         android:textColor="@color/text_secondary"
                         android:textSize="12sp" />
                 </LinearLayout>
@@ -72,7 +147,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="6dp"
                 app:cardBackgroundColor="@color/surface"
                 app:cardCornerRadius="12dp"
                 app:strokeColor="@color/card_stroke"
@@ -81,20 +156,20 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp"
+                    android:padding="14dp"
                     android:gravity="center">
                     <TextView
-                        android:id="@+id/statPosted"
+                        android:id="@+id/statAccounts"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="0"
-                        android:textColor="@color/success"
-                        android:textSize="28sp"
+                        android:textColor="@color/secondary"
+                        android:textSize="26sp"
                         android:textStyle="bold" />
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Posted"
+                        android:text="@string/stat_accounts"
                         android:textColor="@color/text_secondary"
                         android:textSize="12sp" />
                 </LinearLayout>
@@ -117,7 +192,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Campaign Status"
+                    android:text="@string/campaign_status"
                     android:textColor="@color/on_surface"
                     android:textSize="16sp"
                     android:textStyle="bold"
@@ -126,7 +201,7 @@
                     android:id="@+id/statusText"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Idle — ready to start"
+                    android:text="@string/status_idle"
                     android:textColor="@color/text_secondary"
                     android:textSize="14sp" />
                 <ProgressBar
@@ -146,7 +221,7 @@
             android:id="@+id/btnQuickStart"
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:text="Go to Campaign"
+            android:text="@string/btn_quick_start"
             android:textAllCaps="false"
             android:textSize="16sp"
             app:cornerRadius="12dp"
@@ -155,7 +230,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Recent Log"
+            android:text="@string/recent_log"
             android:textColor="@color/on_surface"
             android:textSize="16sp"
             android:textStyle="bold"
@@ -166,7 +241,7 @@
             android:id="@+id/logPreview"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="No activity yet."
+            android:text="@string/no_activity"
             android:textColor="@color/text_secondary"
             android:textSize="13sp"
             android:fontFamily="monospace"
