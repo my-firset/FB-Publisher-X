@@ -4,7 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background"
-    android:fillViewport="true">
+    android:fillViewport="true"
+    android:layoutDirection="rtl">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -15,7 +16,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Settings"
+            android:text="@string/settings_title"
             android:textColor="@color/on_background"
             android:textSize="22sp"
             android:textStyle="bold"
@@ -37,7 +38,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Default Delays"
+                    android:text="@string/default_delays"
                     android:textColor="@color/on_surface"
                     android:textSize="15sp"
                     android:textStyle="bold"
@@ -47,15 +48,16 @@
                     android:layout_height="wrap_content"
                     app:boxBackgroundMode="outline"
                     app:boxStrokeColor="@color/primary"
-                    app:suffixText="seconds">
+                    app:suffixText="ثانية">
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/settingsDefaultDelay"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Default delay between posts"
+                        android:hint="@string/hint_default_delay"
                         android:text="45"
                         android:textColor="@color/on_surface"
-                        android:inputType="number" />
+                        android:inputType="number"
+                        android:gravity="start" />
                 </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -64,7 +66,7 @@
             android:id="@+id/btnSaveSettings"
             android:layout_width="match_parent"
             android:layout_height="48dp"
-            android:text="Save Settings"
+            android:text="@string/btn_save_settings"
             android:textAllCaps="false"
             app:cornerRadius="10dp"
             app:backgroundTint="@color/primary" />
@@ -73,7 +75,7 @@
             android:id="@+id/btnClearData"
             android:layout_width="match_parent"
             android:layout_height="48dp"
-            android:text="Clear All Local Data"
+            android:text="@string/btn_clear_data"
             android:textAllCaps="false"
             android:layout_marginTop="12dp"
             app:cornerRadius="10dp"
@@ -84,7 +86,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Publisher X v1.0 — Independent Marketing Dashboard"
+            android:text="@string/app_version"
             android:textColor="@color/text_secondary"
             android:textSize="12sp"
             android:layout_marginTop="32dp"
