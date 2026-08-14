@@ -196,11 +196,12 @@ public class MainActivity extends AppCompatActivity {
 
     /** Extract visible group links from the loaded Facebook groups page */
     private void extractGroupsFromPage(WebView view) {
+        // Use single-quoted attribute value so we avoid nested double-quote escaping hell
         String js =
             "(function(){" +
             "  var results = [];" +
             "  var seen = {};" +
-            "  var anchors = document.querySelectorAll('a[href*=\\"/groups/\\"]');" +
+            "  var anchors = document.querySelectorAll(\"a[href*='/groups/']\");" +
             "  for (var i = 0; i < anchors.length; i++) {" +
             "    var a = anchors[i];" +
             "    var href = a.href || a.getAttribute('href') || '';" +
