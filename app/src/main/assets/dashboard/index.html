@@ -6,96 +6,53 @@
   <title>FB Publisher X</title>
   <style>
     :root {
-      --bg: #0a0a0a; --card: #141414; --border: #2a2a2a;
-      --primary: #1877F2; --primary-dim: #0d65d9;
-      --text: #f0f0f0; --muted: #9a9a9a;
-      --success: #22c55e; --danger: #ef4444; --warning: #f59e0b;
+      --bg:#0a0a0a; --card:#141414; --border:#2a2a2a;
+      --primary:#1877F2; --primary-dim:#0d65d9;
+      --text:#f0f0f0; --muted:#9a9a9a;
+      --success:#22c55e; --danger:#ef4444; --warning:#f59e0b;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Arabic", sans-serif;
-      background: var(--bg); color: var(--text);
-      min-height: 100vh; padding-bottom: 24px;
-    }
-    header {
-      background: linear-gradient(135deg, #1877F2, #0d65d9);
-      padding: 14px 16px; display: flex; align-items: center; justify-content: space-between;
-      position: sticky; top: 0; z-index: 50;
-    }
-    header h1 { font-size: 17px; font-weight: 700; }
-    header .badge {
-      background: rgba(255,255,255,0.2); padding: 4px 10px;
-      border-radius: 20px; font-size: 11px;
-    }
-    .tabs {
-      display: flex; background: var(--card); border-bottom: 1px solid var(--border);
-      position: sticky; top: 52px; z-index: 40; overflow-x: auto;
-    }
-    .tab {
-      flex: 1; min-width: 64px; text-align: center; padding: 11px 6px;
-      font-size: 12px; color: var(--muted); border: none; background: transparent;
-      border-bottom: 2px solid transparent; cursor: pointer;
-    }
-    .tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
-    .panel { display: none; padding: 14px; }
-    .panel.active { display: block; }
-    .card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 12px; padding: 14px; margin-bottom: 12px;
-    }
-    .card h3 { font-size: 13px; margin-bottom: 10px; color: var(--muted); font-weight: 600; }
-    .hint { font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 12px; }
-    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-    textarea, input {
-      width: 100%; background: #1a1a1a; border: 1px solid var(--border);
-      border-radius: 8px; color: var(--text); padding: 11px; font-size: 14px;
-      outline: none; margin-bottom: 10px;
-    }
-    textarea { min-height: 100px; resize: vertical; }
-    textarea:focus, input:focus { border-color: var(--primary); }
-    .btn {
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 100%; padding: 13px; border: none; border-radius: 10px;
-      font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 8px;
-    }
-    .btn-primary { background: var(--primary); color: #fff; }
-    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
-    .btn-success { background: var(--success); color: #fff; }
-    .row { display: flex; gap: 8px; }
-    .row .btn { flex: 1; }
-    .group-item, .log-item {
-      background: #1a1a1a; border: 1px solid var(--border); border-radius: 8px;
-      padding: 11px; margin-bottom: 8px; display: flex; justify-content: space-between;
-      align-items: center; font-size: 13px; gap: 8px;
-    }
-    .group-item input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--primary); flex-shrink: 0; }
-    .group-item span { flex: 1; word-break: break-all; }
-    .status { font-size: 11px; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
-    .status.ok { background: rgba(34,197,94,0.2); color: var(--success); }
-    .status.fail { background: rgba(239,68,68,0.2); color: var(--danger); }
-    .empty { text-align: center; color: var(--muted); padding: 28px 12px; font-size: 13px; }
-    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
-    .stat {
-      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
-      padding: 12px; text-align: center;
-    }
-    .stat .num { font-size: 20px; font-weight: 700; color: var(--primary); }
-    .stat .lbl { font-size: 11px; color: var(--muted); margin-top: 4px; }
-    .account-box {
-      display: flex; align-items: center; gap: 12px; padding: 12px;
-      background: #1a1a1a; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 12px;
-    }
-    .account-dot {
-      width: 12px; height: 12px; border-radius: 50%; background: var(--muted); flex-shrink: 0;
-    }
-    .account-dot.on { background: var(--success); box-shadow: 0 0 8px rgba(34,197,94,0.5); }
-    #toast {
-      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-      background: #222; color: #fff; padding: 10px 18px; border-radius: 8px;
-      font-size: 13px; opacity: 0; transition: opacity .3s; z-index: 100; pointer-events: none;
-      max-width: 90%; text-align: center;
-    }
-    #toast.show { opacity: 1; }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans Arabic",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:20px}
+    header{background:linear-gradient(135deg,#1877F2,#0d65d9);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+    header h1{font-size:17px;font-weight:700}
+    .badge{background:rgba(255,255,255,.2);padding:4px 10px;border-radius:20px;font-size:11px}
+    .tabs{display:flex;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:52px;z-index:40;overflow-x:auto}
+    .tab{flex:1;min-width:60px;text-align:center;padding:11px 4px;font-size:12px;color:var(--muted);border:none;background:transparent;border-bottom:2px solid transparent;cursor:pointer}
+    .tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600}
+    .panel{display:none;padding:14px}
+    .panel.active{display:block}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px}
+    .card h3{font-size:13px;margin-bottom:10px;color:var(--muted);font-weight:600}
+    .hint{font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:10px}
+    label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+    textarea,input{width:100%;background:#1a1a1a;border:1px solid var(--border);border-radius:8px;color:var(--text);padding:11px;font-size:14px;outline:none;margin-bottom:10px}
+    textarea{min-height:100px;resize:vertical}
+    textarea:focus,input:focus{border-color:var(--primary)}
+    .btn{display:inline-flex;align-items:center;justify-content:center;width:100%;padding:13px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px}
+    .btn-primary{background:var(--primary);color:#fff}
+    .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+    .btn-sm{padding:8px 12px;font-size:12px;width:auto;margin:0}
+    .row{display:flex;gap:8px;flex-wrap:wrap}
+    .row .btn{flex:1}
+    .group-item{background:#1a1a1a;border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:6px;display:flex;align-items:center;gap:8px;font-size:13px}
+    .group-item input[type=checkbox]{width:18px;height:18px;accent-color:var(--primary);flex-shrink:0}
+    .group-item span{flex:1;word-break:break-word}
+    .log-item{background:#1a1a1a;border:1px solid var(--border);border-radius:8px;padding:11px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;font-size:13px;gap:8px}
+    .status{font-size:11px;padding:3px 8px;border-radius:6px;white-space:nowrap}
+    .status.ok{background:rgba(34,197,94,.2);color:var(--success)}
+    .status.fail{background:rgba(239,68,68,.2);color:var(--danger)}
+    .empty{text-align:center;color:var(--muted);padding:24px 12px;font-size:13px}
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+    .stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center}
+    .stat .num{font-size:20px;font-weight:700;color:var(--primary)}
+    .stat .lbl{font-size:11px;color:var(--muted);margin-top:4px}
+    .account-box{display:flex;align-items:center;gap:12px;padding:12px;background:#1a1a1a;border-radius:10px;border:1px solid var(--border);margin-bottom:12px}
+    .account-dot{width:12px;height:12px;border-radius:50%;background:var(--muted);flex-shrink:0}
+    .account-dot.on{background:var(--success);box-shadow:0 0 8px rgba(34,197,94,.5)}
+    .chip{display:inline-block;background:#1a1a1a;border:1px solid var(--border);border-radius:16px;padding:6px 12px;font-size:12px;margin:0 4px 8px 0;cursor:pointer;color:var(--text)}
+    .chip:active{border-color:var(--primary)}
+    #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .3s;z-index:100;pointer-events:none;max-width:90%;text-align:center}
+    #toast.show{opacity:1}
   </style>
 </head>
 <body>
@@ -121,6 +78,12 @@
     <div class="card">
       <h3>نص المنشور</h3>
       <textarea id="postText" placeholder="اكتب نص المنشور هنا..."></textarea>
+      <div class="row" style="margin-bottom:10px">
+        <button type="button" class="btn btn-outline btn-sm" id="btnVary">تنويع النص</button>
+        <button type="button" class="btn btn-outline btn-sm" id="btnAddEmoji">+ إيموجي</button>
+        <button type="button" class="btn btn-outline btn-sm" id="btnAddBreak">+ سطر فارغ</button>
+      </div>
+      <p class="hint">تنويع النص يغيّر المسافات/الإيموجي قليلاً لتقليل التكرار بين المنشورات.</p>
       <div class="row">
         <button class="btn btn-primary" id="btnStart">ابدأ النشر</button>
         <button class="btn btn-outline" id="btnStop">إيقاف</button>
@@ -131,54 +94,46 @@
   <!-- جروبات -->
   <section id="panel-groups" class="panel">
     <div class="card">
-      <h3>كيف تضيف المجموعات؟</h3>
-      <p class="hint">
-        1) اضغط «فتح صفحة مجموعاتي» واستعرض مجموعاتك في فيسبوك.<br>
-        2) انسخ رابط كل مجموعة (يبدأ بـ m.facebook.com/groups/...).<br>
-        3) الصق الروابط هنا (يمكنك لصق عدة روابط دفعة واحدة، كل رابط في سطر).
-      </p>
-      <button class="btn btn-outline" id="btnOpenMyGroups">فتح صفحة مجموعاتي</button>
+      <h3>مزامنة من الحساب</h3>
+      <p class="hint">بعد تسجيل الدخول، اضغط المزامنة لجلب المجموعات الظاهرة في صفحة مجموعاتك على فيسبوك.</p>
+      <button class="btn btn-primary" id="btnSyncGroups">مزامنة الجروبات من فيسبوك</button>
     </div>
     <div class="card">
-      <h3>إضافة روابط</h3>
-      <label>روابط المجموعات (سطر لكل رابط)</label>
-      <textarea id="groupUrls" placeholder="https://m.facebook.com/groups/123\nhttps://m.facebook.com/groups/456" style="min-height:90px"></textarea>
-      <label>اسم اختياري للقائمة</label>
-      <input type="text" id="groupName" placeholder="مثال: مجموعات التسويق" />
-      <button class="btn btn-primary" id="btnAddGroup">إضافة الروابط</button>
+      <h3>بحث وتصفية</h3>
+      <input type="search" id="groupSearch" placeholder="ابحث باسم أو كلمة مفتاحية..." />
     </div>
     <div class="card">
-      <h3>القائمة المحفوظة</h3>
-      <div id="groupList" class="empty">لا توجد مجموعات بعد — أضف روابط من الأعلى</div>
-      <div class="row" style="margin-top:8px">
-        <button class="btn btn-outline" id="btnSelectAll">تحديد الكل</button>
-        <button class="btn btn-outline" id="btnClearGroups">مسح الكل</button>
+      <h3>إضافة يدوية (روابط)</h3>
+      <textarea id="groupUrls" placeholder="https://m.facebook.com/groups/123\nرابط آخر..." style="min-height:70px"></textarea>
+      <button class="btn btn-outline" id="btnAddGroup">إضافة الروابط</button>
+    </div>
+    <div class="card">
+      <h3>القائمة (<span id="groupCount">0</span>)</h3>
+      <div class="row" style="margin-bottom:10px">
+        <button class="btn btn-outline btn-sm" id="btnSelectAll">تحديد الكل</button>
+        <button class="btn btn-outline btn-sm" id="btnSelectNone">إلغاء التحديد</button>
+        <button class="btn btn-outline btn-sm" id="btnClearGroups">مسح الكل</button>
       </div>
+      <div id="groupList" class="empty">لا توجد مجموعات — زامن أو أضف روابط</div>
     </div>
   </section>
 
   <!-- الحساب -->
   <section id="panel-accounts" class="panel">
     <div class="card">
-      <h3>حالة الحساب</h3>
+      <h3>الحساب المحفوظ</h3>
       <div class="account-box">
         <div class="account-dot" id="accountDot"></div>
-        <div>
+        <div style="flex:1">
           <div id="accountLabel" style="font-weight:600">غير مسجل الدخول</div>
-          <div class="hint" style="margin:4px 0 0">الجلسة تُحفظ تلقائياً بعد تسجيل الدخول</div>
+          <div class="hint" style="margin:4px 0 0" id="accountHint">سجّل الدخول ليتم حفظ الجلسة تلقائياً</div>
         </div>
       </div>
-      <button class="btn btn-primary" id="btnLoginFb">تسجيل الدخول عبر فيسبوك</button>
-      <button class="btn btn-outline" id="btnDetectSession">فحص الجلسة الآن</button>
-    </div>
-    <div class="card">
-      <h3>تعليمات</h3>
-      <p class="hint">
-        • من شريط التنقل السفلي اختر «فيسبوك» أو الزر أعلاه.<br>
-        • سجّل دخولك بشكل طبيعي داخل الصفحة.<br>
-        • ارجع للوحة واضغط «فحص الجلسة» للتأكد.<br>
-        • لا حاجة لاستيراد كوكيز يدوياً — الجلسة تُحفظ داخل التطبيق.
-      </p>
+      <label>اسم عرض للحساب (اختياري)</label>
+      <input type="text" id="accountName" placeholder="مثال: حساب التسويق" />
+      <button class="btn btn-primary" id="btnSaveAccount">حفظ اسم الحساب</button>
+      <button class="btn btn-outline" id="btnLoginFb">تسجيل / فتح فيسبوك</button>
+      <button class="btn btn-outline" id="btnDetectSession">فحص الجلسة</button>
     </div>
   </section>
 
@@ -216,134 +171,215 @@
     let groups = JSON.parse(localStorage.getItem('fbx_groups') || '[]');
     let logs = JSON.parse(localStorage.getItem('fbx_logs') || '[]');
     let delaySec = parseInt(localStorage.getItem('fbx_delay') || '45', 10);
+    let accountName = localStorage.getItem('fbx_account_name') || '';
 
-    function saveGroups() { localStorage.setItem('fbx_groups', JSON.stringify(groups)); renderGroups(); updateStats(); }
-    function saveLogs() { localStorage.setItem('fbx_logs', JSON.stringify(logs)); renderLogs(); }
-    function toast(msg) {
-      const el = document.getElementById('toast');
-      el.textContent = msg; el.classList.add('show');
-      setTimeout(() => el.classList.remove('show'), 2800);
+    function saveGroups(){ localStorage.setItem('fbx_groups', JSON.stringify(groups)); renderGroups(); updateStats(); }
+    function saveLogs(){ localStorage.setItem('fbx_logs', JSON.stringify(logs)); renderLogs(); }
+    function toast(msg){
+      const el=document.getElementById('toast');
+      el.textContent=msg; el.classList.add('show');
+      setTimeout(()=>el.classList.remove('show'),2800);
     }
-    function updateStats() {
-      const selected = groups.filter(g => g.selected).length;
-      document.getElementById('statGroups').textContent = selected;
-      document.getElementById('statQueue').textContent = selected;
+    function updateStats(){
+      const selected=groups.filter(g=>g.selected).length;
+      document.getElementById('statGroups').textContent=selected;
+      document.getElementById('statQueue').textContent=selected;
+      document.getElementById('groupCount').textContent=groups.length;
     }
-    function renderGroups() {
-      const box = document.getElementById('groupList');
-      if (!groups.length) {
-        box.className = 'empty';
-        box.textContent = 'لا توجد مجموعات بعد — أضف روابط من الأعلى';
-        return;
+
+    function filteredGroups(){
+      const q=(document.getElementById('groupSearch').value||'').trim().toLowerCase();
+      if(!q) return groups.map((g,i)=>({g,i}));
+      return groups.map((g,i)=>({g,i})).filter(({g})=>
+        (g.name||'').toLowerCase().includes(q) || (g.url||'').toLowerCase().includes(q)
+      );
+    }
+
+    function renderGroups(){
+      const box=document.getElementById('groupList');
+      const list=filteredGroups();
+      if(!groups.length){
+        box.className='empty'; box.textContent='لا توجد مجموعات — زامن أو أضف روابط'; return;
       }
-      box.className = '';
-      box.innerHTML = groups.map((g, i) =>
+      if(!list.length){
+        box.className='empty'; box.textContent='لا نتائج لهذا البحث'; return;
+      }
+      box.className='';
+      box.innerHTML=list.map(({g,i})=>
         `<div class="group-item">
-          <input type="checkbox" ${g.selected ? 'checked' : ''} onchange="toggleGroup(${i})" />
-          <span>${g.name || g.url}</span>
+          <input type="checkbox" ${g.selected?'checked':''} onchange="toggleGroup(${i})" />
+          <span>${escapeHtml(g.name||g.url)}</span>
           <button onclick="removeGroup(${i})" style="background:none;border:none;color:var(--danger);font-size:16px;cursor:pointer;flex-shrink:0">✕</button>
         </div>`
       ).join('');
+      updateStats();
     }
-    function renderLogs() {
-      const box = document.getElementById('logList');
-      if (!logs.length) { box.className = 'empty'; box.textContent = 'لا توجد عمليات بعد'; return; }
-      box.className = '';
-      box.innerHTML = logs.slice().reverse().map(l =>
-        `<div class="log-item"><div><div>${l.group || '-'}</div><div style="font-size:11px;color:var(--muted)">${l.time}</div></div>
-         <span class="status ${l.ok ? 'ok' : 'fail'}">${l.ok ? 'نجح' : 'فشل'}</span></div>`
+
+    function escapeHtml(s){
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function renderLogs(){
+      const box=document.getElementById('logList');
+      if(!logs.length){ box.className='empty'; box.textContent='لا توجد عمليات بعد'; return; }
+      box.className='';
+      box.innerHTML=logs.slice().reverse().map(l=>
+        `<div class="log-item"><div><div>${escapeHtml(l.group||'-')}</div><div style="font-size:11px;color:var(--muted)">${l.time}</div></div>
+         <span class="status ${l.ok?'ok':'fail'}">${l.ok?'نجح':'فشل'}</span></div>`
       ).join('');
     }
-    window.toggleGroup = function(i) { groups[i].selected = !groups[i].selected; saveGroups(); };
-    window.removeGroup = function(i) { groups.splice(i, 1); saveGroups(); };
 
-    function hasBridge() { return typeof AndroidBridge !== 'undefined'; }
-    function callBridge(method, ...args) {
-      if (!hasBridge()) { toast('الجسر غير متصل'); return; }
-      try { return AndroidBridge[method](...args); }
-      catch (e) { toast('خطأ: ' + e.message); }
+    window.toggleGroup=function(i){ groups[i].selected=!groups[i].selected; saveGroups(); };
+    window.removeGroup=function(i){ groups.splice(i,1); saveGroups(); };
+
+    function hasBridge(){ return typeof AndroidBridge!=='undefined'; }
+    function callBridge(method,...args){
+      if(!hasBridge()){ toast('الجسر غير متصل'); return; }
+      try{ return AndroidBridge[method](...args); }
+      catch(e){ toast('خطأ: '+e.message); }
     }
 
-    window.onNativePostResult = function(success, message, groupLabel) {
-      logs.push({ ok: !!success, group: groupLabel || message, time: new Date().toLocaleString('ar') });
+    window.onNativePostResult=function(success,message,groupLabel){
+      logs.push({ok:!!success,group:groupLabel||message,time:new Date().toLocaleString('ar')});
       saveLogs();
-      toast(success ? 'تم النشر بنجاح' : 'فشل: ' + message);
+      toast(success?'تم النشر بنجاح':'فشل: '+message);
     };
 
-    window.setSessionStatus = function(ok) {
-      const b = document.getElementById('sessionBadge');
-      const dot = document.getElementById('accountDot');
-      const lbl = document.getElementById('accountLabel');
-      b.textContent = ok ? 'متصل' : 'غير متصل';
-      b.style.background = ok ? 'rgba(34,197,94,0.35)' : 'rgba(255,255,255,0.2)';
-      if (dot) { dot.className = 'account-dot' + (ok ? ' on' : ''); }
-      if (lbl) { lbl.textContent = ok ? 'جلسة فيسبوك نشطة' : 'غير مسجل الدخول'; }
+    window.setSessionStatus=function(ok){
+      const b=document.getElementById('sessionBadge');
+      const dot=document.getElementById('accountDot');
+      const lbl=document.getElementById('accountLabel');
+      const hint=document.getElementById('accountHint');
+      b.textContent=ok?'متصل':'غير متصل';
+      b.style.background=ok?'rgba(34,197,94,.35)':'rgba(255,255,255,.2)';
+      if(dot) dot.className='account-dot'+(ok?' on':'');
+      if(lbl) lbl.textContent=ok?(accountName||'جلسة فيسبوك نشطة'):'غير مسجل الدخول';
+      if(hint) hint.textContent=ok?'الجلسة محفوظة محلياً — يمكنك المزامنة والنشر':'سجّل الدخول ليتم حفظ الجلسة تلقائياً';
     };
 
-    document.getElementById('btnAddGroup').onclick = () => {
-      const raw = document.getElementById('groupUrls').value.trim();
-      const namePrefix = document.getElementById('groupName').value.trim();
-      if (!raw) { toast('الصق رابطاً واحداً على الأقل'); return; }
-      const lines = raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
-      let added = 0;
-      lines.forEach((url, idx) => {
-        if (!url.includes('facebook.com') && !url.includes('fb.com')) return;
-        if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-        const exists = groups.some(g => g.url === url);
-        if (exists) return;
-        groups.push({
-          url,
-          name: namePrefix ? (namePrefix + (lines.length > 1 ? ' #' + (idx + 1) : '')) : url,
-          selected: true
+    // Groups received from native after sync
+    window.onGroupsSynced=function(jsonStr){
+      try{
+        const arr=JSON.parse(jsonStr||'[]');
+        let added=0;
+        arr.forEach(item=>{
+          const url=item.url||item;
+          const name=item.name||url;
+          if(!url||typeof url!=='string') return;
+          if(!url.includes('facebook.com')&&!url.includes('fb.com')) return;
+          if(groups.some(g=>g.url===url)) return;
+          groups.push({url,name,selected:true});
+          added++;
         });
+        saveGroups();
+        toast(added?('تمت مزامنة '+added+' مجموعة جديدة'):'لم تُضف مجموعات جديدة (قد تكون مكررة أو الصفحة فارغة)');
+      }catch(e){ toast('خطأ في قراءة المجموعات'); }
+    };
+
+    // Text variation
+    const EMOJIS=['✨','🔥','💡','📌','✅','🌟','💬','📢','🎯','🚀','💪','👍'];
+    function varyText(t){
+      if(!t) return t;
+      let out=t;
+      // random zero-width / thin spaces occasionally between words
+      const words=out.split(/(\s+)/);
+      out=words.map((w,i)=>{
+        if(/^\s+$/.test(w)) return Math.random()>0.7 ? w+'\u200B' : w;
+        return w;
+      }).join('');
+      if(Math.random()>0.5){
+        const em=EMOJIS[Math.floor(Math.random()*EMOJIS.length)];
+        out = Math.random()>0.5 ? (em+' '+out) : (out+' '+em);
+      }
+      // slight punctuation tweak
+      if(out.endsWith('.')&&Math.random()>0.6) out=out.slice(0,-1)+'!';
+      return out;
+    }
+
+    document.getElementById('btnVary').onclick=()=>{
+      const ta=document.getElementById('postText');
+      if(!ta.value.trim()){ toast('اكتب نصاً أولاً'); return; }
+      ta.value=varyText(ta.value);
+      toast('تم تنويع النص');
+    };
+    document.getElementById('btnAddEmoji').onclick=()=>{
+      const ta=document.getElementById('postText');
+      ta.value=(ta.value+' '+EMOJIS[Math.floor(Math.random()*EMOJIS.length)]).trim();
+    };
+    document.getElementById('btnAddBreak').onclick=()=>{
+      const ta=document.getElementById('postText');
+      ta.value=ta.value+'\n\n';
+    };
+
+    document.getElementById('groupSearch').oninput=()=>renderGroups();
+
+    document.getElementById('btnAddGroup').onclick=()=>{
+      const raw=document.getElementById('groupUrls').value.trim();
+      if(!raw){ toast('الصق رابطاً واحداً على الأقل'); return; }
+      const lines=raw.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean);
+      let added=0;
+      lines.forEach(url=>{
+        if(!url.includes('facebook.com')&&!url.includes('fb.com')) return;
+        if(!/^https?:\/\//i.test(url)) url='https://'+url;
+        if(groups.some(g=>g.url===url)) return;
+        groups.push({url,name:url,selected:true});
         added++;
       });
-      document.getElementById('groupUrls').value = '';
-      document.getElementById('groupName').value = '';
+      document.getElementById('groupUrls').value='';
       saveGroups();
-      toast(added ? 'تمت إضافة ' + added + ' مجموعة' : 'لم يُضف شيء (روابط مكررة أو غير صالحة)');
+      toast(added?('تمت إضافة '+added):'لم يُضف شيء');
     };
 
-    document.getElementById('btnSelectAll').onclick = () => {
-      groups.forEach(g => g.selected = true);
-      saveGroups();
-      toast('تم تحديد الكل');
-    };
-    document.getElementById('btnClearGroups').onclick = () => { groups = []; saveGroups(); toast('تم المسح'); };
+    document.getElementById('btnSelectAll').onclick=()=>{ groups.forEach(g=>g.selected=true); saveGroups(); };
+    document.getElementById('btnSelectNone').onclick=()=>{ groups.forEach(g=>g.selected=false); saveGroups(); };
+    document.getElementById('btnClearGroups').onclick=()=>{ groups=[]; saveGroups(); toast('تم المسح'); };
 
-    document.getElementById('btnSaveSettings').onclick = () => {
-      let v = parseInt(document.getElementById('delaySec').value, 10);
-      if (isNaN(v) || v < 15) v = 15;
-      delaySec = v;
-      localStorage.setItem('fbx_delay', String(v));
-      callBridge('setDelaySeconds', v);
-      toast('تم الحفظ (' + v + ' ثانية)');
+    document.getElementById('btnSyncGroups').onclick=()=>{
+      toast('جاري فتح مجموعاتك واستخراج الروابط...');
+      callBridge('syncGroups');
     };
 
-    document.getElementById('btnStart').onclick = () => {
-      const text = document.getElementById('postText').value.trim();
-      if (!text) { toast('اكتب نص المنشور أولاً'); return; }
-      const selected = groups.filter(g => g.selected);
-      if (!selected.length) { toast('أضف وحدد مجموعة واحدة على الأقل من تبويب جروبات'); return; }
+    document.getElementById('btnSaveSettings').onclick=()=>{
+      let v=parseInt(document.getElementById('delaySec').value,10);
+      if(isNaN(v)||v<15) v=15;
+      delaySec=v;
+      localStorage.setItem('fbx_delay',String(v));
+      callBridge('setDelaySeconds',v);
+      toast('تم الحفظ ('+v+' ثانية)');
+    };
+
+    document.getElementById('btnSaveAccount').onclick=()=>{
+      accountName=document.getElementById('accountName').value.trim();
+      localStorage.setItem('fbx_account_name',accountName);
+      toast('تم حفظ اسم الحساب');
+      callBridge('detectSession');
+    };
+
+    document.getElementById('btnStart').onclick=()=>{
+      let text=document.getElementById('postText').value.trim();
+      if(!text){ toast('اكتب نص المنشور أولاً'); return; }
+      const selected=groups.filter(g=>g.selected);
+      if(!selected.length){ toast('حدد مجموعة واحدة على الأقل من تبويب جروبات'); return; }
       callBridge('clearQueue');
-      selected.forEach(g => callBridge('addTask', g.url, text));
+      selected.forEach((g,idx)=>{
+        // slightly vary text per group
+        const t = idx===0 ? text : varyText(text);
+        callBridge('addTask', g.url, t);
+      });
       callBridge('setDelaySeconds', delaySec);
       callBridge('startQueue');
-      toast('بدأ النشر على ' + selected.length + ' مجموعة');
+      toast('بدأ النشر على '+selected.length+' مجموعة');
     };
 
-    document.getElementById('btnStop').onclick = () => { callBridge('stopQueue'); toast('تم الإيقاف'); };
-    document.getElementById('btnLoginFb').onclick = () => callBridge('openFacebook');
-    document.getElementById('btnOpenMyGroups').onclick = () => callBridge('openMyGroups');
-    document.getElementById('btnDetectSession').onclick = () => {
-      callBridge('detectSession');
-      toast('جاري فحص الجلسة...');
-    };
-    document.getElementById('btnClearLogs').onclick = () => { logs = []; saveLogs(); toast('تم مسح السجل'); };
+    document.getElementById('btnStop').onclick=()=>{ callBridge('stopQueue'); toast('تم الإيقاف'); };
+    document.getElementById('btnLoginFb').onclick=()=>callBridge('openFacebook');
+    document.getElementById('btnDetectSession').onclick=()=>{ callBridge('detectSession'); toast('جاري الفحص...'); };
+    document.getElementById('btnClearLogs').onclick=()=>{ logs=[]; saveLogs(); toast('تم مسح السجل'); };
 
-    document.getElementById('delaySec').value = delaySec;
+    document.getElementById('delaySec').value=delaySec;
+    document.getElementById('accountName').value=accountName;
     renderGroups(); renderLogs(); updateStats();
-    if (hasBridge()) {
+    if(hasBridge()){
       callBridge('setDelaySeconds', delaySec);
       callBridge('onDashboardReady');
       callBridge('detectSession');
