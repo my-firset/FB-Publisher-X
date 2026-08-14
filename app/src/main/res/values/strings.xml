@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">FB Publisher X</string>
+    <string name="app_name">Publisher X</string>
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_accounts">Accounts</string>
+    <string name="nav_groups">Groups</string>
+    <string name="nav_campaign">Campaign</string>
+    <string name="nav_settings">Settings</string>
 </resources>
