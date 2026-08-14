@@ -1,9 +1,77 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Publisher X</string>
-    <string name="nav_dashboard">Dashboard</string>
-    <string name="nav_accounts">Accounts</string>
-    <string name="nav_groups">Groups</string>
-    <string name="nav_campaign">Campaign</string>
-    <string name="nav_settings">Settings</string>
+    <string name="nav_dashboard">الرئيسية</string>
+    <string name="nav_accounts">الحسابات</string>
+    <string name="nav_groups">المجموعات</string>
+    <string name="nav_campaign">الحملات</string>
+    <string name="nav_settings">الإعدادات</string>
+
+    <!-- Dashboard -->
+    <string name="dash_title">Publisher X</string>
+    <string name="dash_subtitle">لوحة تحكم الحملات التسويقية</string>
+    <string name="stat_groups">المجموعات</string>
+    <string name="stat_posted">منشورات ناجحة</string>
+    <string name="stat_failed">فاشلة</string>
+    <string name="stat_accounts">الحسابات</string>
+    <string name="campaign_status">حالة الحملة</string>
+    <string name="status_idle">جاهز — اضغط بدء الحملة</string>
+    <string name="status_running">جاري التنفيذ…</string>
+    <string name="btn_quick_start">بدء الحملة السريعة</string>
+    <string name="recent_log">سجل النشاط</string>
+    <string name="no_activity">لا يوجد نشاط بعد.</string>
+
+    <!-- Accounts -->
+    <string name="accounts_title">الحسابات والجلسات</string>
+    <string name="account_label">اسم الحساب</string>
+    <string name="hint_account_name">مثال: الصفحة الرئيسية</string>
+    <string name="cookies_label">كوكيز الجلسة (اختياري)</string>
+    <string name="hint_cookies">الصق الكوكيز هنا إن لزم</string>
+    <string name="btn_save_account">حفظ الحساب</string>
+    <string name="account_none">لا يوجد حساب محفوظ</string>
+    <string name="account_saved">تم الحفظ: %1$s</string>
+    <string name="session_active">الجلسة: نشطة</string>
+    <string name="session_inactive">الجلسة: غير نشطة</string>
+
+    <!-- Groups -->
+    <string name="groups_title">قائمة المجموعات</string>
+    <string name="hint_group_url">رابط المجموعة أو المعرف</string>
+    <string name="hint_group_name">الاسم المعروض (اختياري)</string>
+    <string name="hint_import_list">الصق قائمة روابط (سطر لكل مجموعة)</string>
+    <string name="btn_add_group">إضافة</string>
+    <string name="btn_import">استيراد قائمة</string>
+    <string name="btn_clear_groups">مسح الكل</string>
+    <string name="groups_count">%1$d مجموعة محفوظة</string>
+    <string name="toast_enter_url">أدخل الرابط أو المعرف</string>
+    <string name="toast_groups_cleared">تم مسح المجموعات</string>
+
+    <!-- Campaign -->
+    <string name="campaign_title">إنشاء الحملة</string>
+    <string name="post_text_label">نص المنشور</string>
+    <string name="hint_post_text">اكتب محتوى المنشور هنا…</string>
+    <string name="hint_min_delay">الحد الأدنى</string>
+    <string name="hint_max_delay">الحد الأقصى</string>
+    <string name="campaign_info">%1$d مجموعة • %2$s</string>
+    <string name="ready">جاهز</string>
+    <string name="running">جاري</string>
+    <string name="stopped">متوقف</string>
+    <string name="btn_start">بدء الحملة</string>
+    <string name="btn_stop">إيقاف الحملة</string>
+    <string name="campaign_log">سجل الحملة</string>
+    <string name="waiting">في الانتظار…</string>
+    <string name="toast_add_groups">أضف مجموعات أولاً</string>
+    <string name="toast_enter_text">أدخل نص المنشور</string>
+    <string name="toast_started">تم بدء الحملة في الخلفية</string>
+    <string name="toast_stopped">تم إيقاف الحملة</string>
+    <string name="toast_finished">انتهت الحملة</string>
+
+    <!-- Settings -->
+    <string name="settings_title">الإعدادات</string>
+    <string name="default_delays">التأخير الافتراضي</string>
+    <string name="hint_default_delay">التأخير بين المنشورات (ثانية)</string>
+    <string name="btn_save_settings">حفظ الإعدادات</string>
+    <string name="btn_clear_data">مسح كل البيانات المحلية</string>
+    <string name="toast_settings_saved">تم حفظ الإعدادات</string>
+    <string name="toast_data_cleared">تم مسح كل البيانات</string>
+    <string name="app_version">Publisher X v1.1 — لوحة تسويق مستقلة</string>
 </resources>
