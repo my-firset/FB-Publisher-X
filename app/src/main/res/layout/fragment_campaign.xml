@@ -119,6 +119,16 @@
             app:cornerRadius="12dp"
             app:backgroundTint="@color/error" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnRetryFailed"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="@string/btn_retry_failed"
+            android:textAllCaps="false"
+            android:layout_marginTop="8dp"
+            app:cornerRadius="12dp"
+            app:backgroundTint="@color/secondary" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -139,7 +149,7 @@
             android:fontFamily="monospace"
             android:background="@color/surface"
             android:padding="12dp"
-            android:minHeight="120dp"
+            android:minHeight="160dp"
             android:gravity="start" />
 
     </LinearLayout>

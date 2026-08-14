@@ -22,6 +22,19 @@
             android:textStyle="bold"
             android:layout_marginBottom="16dp" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnLoginFb"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="@string/btn_login_fb"
+            android:textAllCaps="false"
+            android:textSize="15sp"
+            android:layout_marginBottom="16dp"
+            app:cornerRadius="12dp"
+            app:backgroundTint="@color/primary"
+            app:icon="@android:drawable/ic_menu_share"
+            app:iconGravity="textStart" />
+
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
