@@ -4,7 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background"
-    android:fillViewport="true">
+    android:fillViewport="true"
+    android:layoutDirection="rtl">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -15,7 +16,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Campaign Creator"
+            android:text="@string/campaign_title"
             android:textColor="@color/on_background"
             android:textSize="22sp"
             android:textStyle="bold"
@@ -24,7 +25,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Post Text"
+            android:text="@string/post_text_label"
             android:textColor="@color/text_secondary"
             android:textSize="12sp" />
         <com.google.android.material.textfield.TextInputLayout
@@ -38,11 +39,11 @@
                 android:id="@+id/inputPostText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Write your post content here..."
+                android:hint="@string/hint_post_text"
                 android:textColor="@color/on_surface"
                 android:inputType="textMultiLine"
                 android:minLines="5"
-                android:gravity="top" />
+                android:gravity="start|top" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <LinearLayout
@@ -57,15 +58,16 @@
                 android:layout_marginEnd="6dp"
                 app:boxBackgroundMode="outline"
                 app:boxStrokeColor="@color/primary"
-                app:suffixText="sec">
+                app:suffixText="ث">
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/inputMinDelay"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Min Delay"
+                    android:hint="@string/hint_min_delay"
                     android:text="30"
                     android:textColor="@color/on_surface"
-                    android:inputType="number" />
+                    android:inputType="number"
+                    android:gravity="start" />
             </com.google.android.material.textfield.TextInputLayout>
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="0dp"
@@ -74,15 +76,16 @@
                 android:layout_marginStart="6dp"
                 app:boxBackgroundMode="outline"
                 app:boxStrokeColor="@color/primary"
-                app:suffixText="sec">
+                app:suffixText="ث">
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/inputMaxDelay"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Max Delay"
+                    android:hint="@string/hint_max_delay"
                     android:text="60"
                     android:textColor="@color/on_surface"
-                    android:inputType="number" />
+                    android:inputType="number"
+                    android:gravity="start" />
             </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
 
@@ -90,7 +93,7 @@
             android:id="@+id/campaignInfo"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="0 groups selected • Ready"
+            android:text="0 مجموعة • جاهز"
             android:textColor="@color/text_secondary"
             android:textSize="13sp"
             android:layout_marginBottom="16dp" />
@@ -99,7 +102,7 @@
             android:id="@+id/btnStartCampaign"
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:text="Start Campaign"
+            android:text="@string/btn_start"
             android:textAllCaps="false"
             android:textSize="16sp"
             app:cornerRadius="12dp"
@@ -109,7 +112,7 @@
             android:id="@+id/btnStopCampaign"
             android:layout_width="match_parent"
             android:layout_height="48dp"
-            android:text="Stop Campaign"
+            android:text="@string/btn_stop"
             android:textAllCaps="false"
             android:layout_marginTop="8dp"
             android:visibility="gone"
@@ -119,7 +122,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Campaign Log"
+            android:text="@string/campaign_log"
             android:textColor="@color/on_surface"
             android:textSize="15sp"
             android:textStyle="bold"
@@ -130,13 +133,14 @@
             android:id="@+id/campaignLog"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Waiting..."
+            android:text="@string/waiting"
             android:textColor="@color/text_secondary"
             android:textSize="12sp"
             android:fontFamily="monospace"
             android:background="@color/surface"
             android:padding="12dp"
-            android:minHeight="120dp" />
+            android:minHeight="120dp"
+            android:gravity="start" />
 
     </LinearLayout>
 </ScrollView>
