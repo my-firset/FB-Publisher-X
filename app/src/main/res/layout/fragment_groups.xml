@@ -17,6 +17,20 @@
         android:textStyle="bold"
         android:layout_marginBottom="12dp" />
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnSmartExtractor"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:text="@string/btn_smart_extractor"
+        android:textAllCaps="false"
+        android:textSize="15sp"
+        android:layout_marginBottom="12dp"
+        app:cornerRadius="12dp"
+        app:backgroundTint="@color/primary"
+        app:icon="@android:drawable/ic_menu_search"
+        app:iconGravity="textStart"
+        app:iconPadding="8dp" />
+
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

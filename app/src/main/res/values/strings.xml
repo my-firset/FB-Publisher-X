@@ -60,6 +60,14 @@
     <string name="toast_enter_url">أدخل الرابط أو المعرف</string>
     <string name="toast_groups_cleared">تم مسح المجموعات</string>
     <string name="toast_exported">تم نسخ القائمة إلى الحافظة</string>
+    <string name="btn_smart_extractor">مستخرج الروابط الذكي</string>
+    <string name="smart_extractor_title">مستخرج الروابط الذكي</string>
+    <string name="smart_extractor_hint">الصق أي نص فوضوي يحتوي على روابط مجموعات فيسبوك (من محادثات، ملاحظات، قوائم مختلطة…). سيستخرج الروابط الصحيحة تلقائياً ويحذف المكرر.</string>
+    <string name="btn_extract">استخراج الروابط</string>
+    <string name="btn_add_to_list">إضافة للقائمة</string>
+    <string name="extract_found">تم العثور على %1$d رابط صحيح</string>
+    <string name="extract_none">لم يتم العثور على روابط مجموعات صالحة</string>
+    <string name="extract_added">تمت إضافة %1$d مجموعة جديدة (تم تجاهل المكرر)</string>
 
     <!-- Campaign -->
     <string name="campaign_title">إنشاء الحملة</string>
@@ -99,5 +107,5 @@
     <string name="btn_clear_data">مسح كل البيانات المحلية</string>
     <string name="toast_settings_saved">تم حفظ الإعدادات</string>
     <string name="toast_data_cleared">تم مسح كل البيانات</string>
-    <string name="app_version">Publisher X v1.4 — SpinTax + Profile + Media UI</string>
+    <string name="app_version">Publisher X v1.5 — Smart Link Extractor + SpinTax + Profile</string>
 </resources>
