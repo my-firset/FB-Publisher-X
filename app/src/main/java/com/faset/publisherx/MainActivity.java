@@ -22,7 +22,9 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -39,6 +41,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -46,16 +49,18 @@ import org.json.JSONObject;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * Publisher X — Independent Native Marketing Dashboard (Arabic)
- * Phase 6: SpinTax, enhanced profile (c_user + logout), media picker UI, min delay 5s.
- * No Facebook scraping.
+ * Phase 7: Smart Link Extractor (local regex, 100% ToS-safe), SpinTax, profile, media UI.
+ * No Facebook scraping / automated data collection.
  */
 public class MainActivity extends AppCompatActivity {
 
@@ -64,6 +69,15 @@ public class MainActivity extends AppCompatActivity {
     private static final long PAGE_TIMEOUT_MS = 10000L;
     private static final int REST_AFTER_SUCCESS = 15;
     private static final long REST_DURATION_MS = 5 * 60 * 1000L;
+
+    /** Matches facebook.com/groups/ID or name (www/m/mobile optional, http/https optional). */
+    private static final Pattern GROUP_URL_PATTERN = Pattern.compile(
+            "(?:https?://)?(?:www\\.|m\\.|mobile\\.)?facebook\\.com/groups/([a-zA-Z0-9._-]+)/?",
+            Pattern.CASE_INSENSITIVE);
+
+    /** Bare long numeric IDs (typical Facebook group IDs are 10–20 digits). */
+    private static final Pattern BARE_ID_PATTERN = Pattern.compile(
+            "(?<![a-zA-Z0-9./_-])(\\d{10,20})(?![a-zA-Z0-9])");
 
     private BottomNavigationView bottomNav;
     private WebView hiddenWebView;
@@ -195,6 +209,43 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         return "";
+    }
+
+    /**
+     * Pure local Smart Link Extractor.
+     * Scans arbitrary pasted text and returns unique normalized Facebook group URLs.
+     * Never contacts the network.
+     */
+    public static List<String> extractGroupLinks(String raw) {
+        if (raw == null || raw.trim().isEmpty()) return new ArrayList<>();
+        Set<String> unique = new LinkedHashSet<>();
+
+        Matcher m = GROUP_URL_PATTERN.matcher(raw);
+        while (m.find()) {
+            String id = m.group(1);
+            if (id != null && !id.isEmpty()) {
+                unique.add(normalizeGroupUrl(id));
+            }
+        }
+
+        // Also catch bare numeric IDs that look like group IDs
+        Matcher bare = BARE_ID_PATTERN.matcher(raw);
+        while (bare.find()) {
+            String id = bare.group(1);
+            if (id != null && id.length() >= 10) {
+                unique.add(normalizeGroupUrl(id));
+            }
+        }
+
+        return new ArrayList<>(unique);
+    }
+
+    private static String normalizeGroupUrl(String idOrPath) {
+        if (idOrPath == null) return "";
+        String clean = idOrPath.trim();
+        if (clean.startsWith("http")) return clean;
+        if (clean.contains("facebook.com/groups/")) return clean.startsWith("http") ? clean : "https://" + clean;
+        return "https://m.facebook.com/groups/" + clean;
     }
 
     public void logoutAccount() {
@@ -712,6 +763,9 @@ public class MainActivity extends AppCompatActivity {
             recycler.setAdapter(adapter);
             count.setText(getString(R.string.groups_count, act.groupUrls.size()));
 
+            v.findViewById(R.id.btnSmartExtractor).setOnClickListener(btn ->
+                    showSmartExtractorDialog(act, adapter, count));
+
             v.findViewById(R.id.btnAddGroup).setOnClickListener(btn -> {
                 String u = urlIn.getText() != null ? urlIn.getText().toString().trim() : "";
                 String n = nameIn.getText() != null ? nameIn.getText().toString().trim() : "";
@@ -735,21 +789,31 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(act, R.string.toast_enter_url, Toast.LENGTH_SHORT).show();
                     return;
                 }
-                String[] lines = raw.split("\n");
+                // Prefer smart extraction even for the simple import field
+                List<String> found = extractGroupLinks(raw);
+                if (found.isEmpty()) {
+                    // Fallback: treat each non-empty line as a URL
+                    String[] lines = raw.split("\n");
+                    for (String line : lines) {
+                        String u = line.trim();
+                        if (!u.isEmpty()) found.add(u);
+                    }
+                }
                 int start = act.groupUrls.size();
                 int added = 0;
-                for (String line : lines) {
-                    String u = line.trim();
-                    if (u.isEmpty()) continue;
+                Set<String> existing = new LinkedHashSet<>(act.groupUrls);
+                for (String u : found) {
+                    if (existing.contains(u)) continue;
                     act.groupUrls.add(u);
                     act.groupNames.add(u);
+                    existing.add(u);
                     added++;
                 }
                 act.saveGroups();
                 if (added > 0) adapter.notifyItemRangeInserted(start, added);
                 count.setText(getString(R.string.groups_count, act.groupUrls.size()));
                 importIn.setText("");
-                Toast.makeText(act, "تمت إضافة " + added + " مجموعة", Toast.LENGTH_SHORT).show();
+                Toast.makeText(act, getString(R.string.extract_added, added), Toast.LENGTH_SHORT).show();
             });
 
             v.findViewById(R.id.btnExportGroups).setOnClickListener(btn -> {
@@ -777,6 +841,126 @@ public class MainActivity extends AppCompatActivity {
             });
 
             return v;
+        }
+
+        private void showSmartExtractorDialog(MainActivity act, GroupsAdapter adapter, TextView countView) {
+            Dialog dialog = new Dialog(act);
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+
+            LinearLayout root = new LinearLayout(act);
+            root.setOrientation(LinearLayout.VERTICAL);
+            root.setPadding(32, 32, 32, 32);
+            root.setBackgroundColor(0xFF121212);
+
+            TextView title = new TextView(act);
+            title.setText(R.string.smart_extractor_title);
+            title.setTextColor(0xFFFFFFFF);
+            title.setTextSize(20);
+            title.setPadding(0, 0, 0, 16);
+            root.addView(title);
+
+            TextView hint = new TextView(act);
+            hint.setText(R.string.smart_extractor_hint);
+            hint.setTextColor(0xFFAAAAAA);
+            hint.setTextSize(13);
+            hint.setPadding(0, 0, 0, 16);
+            root.addView(hint);
+
+            TextInputLayout til = new TextInputLayout(act);
+            til.setBoxBackgroundMode(TextInputLayout.BOX_BACKGROUND_OUTLINE);
+            TextInputEditText pasteBox = new TextInputEditText(act);
+            pasteBox.setHint("الصق النص هنا…");
+            pasteBox.setMinLines(6);
+            pasteBox.setMaxLines(12);
+            pasteBox.setGravity(android.view.Gravity.TOP | android.view.Gravity.START);
+            pasteBox.setTextColor(0xFFFFFFFF);
+            pasteBox.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+            til.addView(pasteBox);
+            root.addView(til);
+
+            TextView resultLabel = new TextView(act);
+            resultLabel.setTextColor(0xFF22C55E);
+            resultLabel.setTextSize(14);
+            resultLabel.setPadding(0, 16, 0, 8);
+            resultLabel.setVisibility(View.GONE);
+            root.addView(resultLabel);
+
+            ScrollView previewScroll = new ScrollView(act);
+            TextView preview = new TextView(act);
+            preview.setTextColor(0xFFCCCCCC);
+            preview.setTextSize(12);
+            preview.setPadding(8, 8, 8, 8);
+            previewScroll.addView(preview);
+            previewScroll.setVisibility(View.GONE);
+            LinearLayout.LayoutParams scrollLp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+            scrollLp.height = 240;
+            root.addView(previewScroll, scrollLp);
+
+            final List<String>[] extracted = new List[]{new ArrayList<>()};
+
+            MaterialButton extractBtn = new MaterialButton(act);
+            extractBtn.setText(R.string.btn_extract);
+            extractBtn.setAllCaps(false);
+            extractBtn.setOnClickListener(v -> {
+                String raw = pasteBox.getText() != null ? pasteBox.getText().toString() : "";
+                List<String> found = extractGroupLinks(raw);
+                extracted[0] = found;
+                if (found.isEmpty()) {
+                    resultLabel.setText(R.string.extract_none);
+                    resultLabel.setTextColor(0xFFF59E0B);
+                    resultLabel.setVisibility(View.VISIBLE);
+                    previewScroll.setVisibility(View.GONE);
+                } else {
+                    resultLabel.setText(act.getString(R.string.extract_found, found.size()));
+                    resultLabel.setTextColor(0xFF22C55E);
+                    resultLabel.setVisibility(View.VISIBLE);
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < Math.min(found.size(), 40); i++) {
+                        sb.append("• ").append(found.get(i)).append("\n");
+                    }
+                    if (found.size() > 40) sb.append("… و ").append(found.size() - 40).append(" أخرى");
+                    preview.setText(sb.toString().trim());
+                    previewScroll.setVisibility(View.VISIBLE);
+                }
+            });
+            root.addView(extractBtn);
+
+            MaterialButton addBtn = new MaterialButton(act);
+            addBtn.setText(R.string.btn_add_to_list);
+            addBtn.setAllCaps(false);
+            addBtn.setOnClickListener(v -> {
+                List<String> found = extracted[0];
+                if (found == null || found.isEmpty()) {
+                    Toast.makeText(act, R.string.extract_none, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                int start = act.groupUrls.size();
+                int added = 0;
+                Set<String> existing = new LinkedHashSet<>(act.groupUrls);
+                for (String u : found) {
+                    if (existing.contains(u)) continue;
+                    act.groupUrls.add(u);
+                    act.groupNames.add(u);
+                    existing.add(u);
+                    added++;
+                }
+                act.saveGroups();
+                if (added > 0) adapter.notifyItemRangeInserted(start, added);
+                countView.setText(act.getString(R.string.groups_count, act.groupUrls.size()));
+                Toast.makeText(act, act.getString(R.string.extract_added, added), Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+            });
+            root.addView(addBtn);
+
+            dialog.setContentView(root);
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setLayout(
+                        WindowManager.LayoutParams.MATCH_PARENT,
+                        WindowManager.LayoutParams.WRAP_CONTENT);
+                dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+            }
+            dialog.show();
         }
     }
 
