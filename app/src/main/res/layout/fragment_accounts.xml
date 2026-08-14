@@ -4,7 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/background"
-    android:fillViewport="true">
+    android:fillViewport="true"
+    android:layoutDirection="rtl">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -15,7 +16,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Accounts / Sessions"
+            android:text="@string/accounts_title"
             android:textColor="@color/on_background"
             android:textSize="22sp"
             android:textStyle="bold"
@@ -38,7 +39,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Account Label"
+                    android:text="@string/account_label"
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp" />
                 <com.google.android.material.textfield.TextInputLayout
@@ -51,15 +52,16 @@
                         android:id="@+id/inputAccountName"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="e.g. Main Page"
+                        android:hint="@string/hint_account_name"
                         android:textColor="@color/on_surface"
-                        android:inputType="text" />
+                        android:inputType="text"
+                        android:gravity="start" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Session Cookies (optional)"
+                    android:text="@string/cookies_label"
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp"
                     android:layout_marginTop="16dp" />
@@ -73,17 +75,18 @@
                         android:id="@+id/inputCookies"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Paste cookies if needed"
+                        android:hint="@string/hint_cookies"
                         android:textColor="@color/on_surface"
                         android:inputType="textMultiLine"
-                        android:minLines="3" />
+                        android:minLines="3"
+                        android:gravity="start|top" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnSaveAccount"
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
-                    android:text="Save Account"
+                    android:text="@string/btn_save_account"
                     android:textAllCaps="false"
                     android:layout_marginTop="16dp"
                     app:cornerRadius="10dp"
@@ -95,9 +98,18 @@
             android:id="@+id/accountStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="No account saved yet"
+            android:text="@string/account_none"
             android:textColor="@color/text_secondary"
             android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/sessionIndicator"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/session_inactive"
+            android:textColor="@color/warning"
+            android:textSize="13sp"
+            android:layout_marginTop="8dp" />
 
     </LinearLayout>
 </ScrollView>
