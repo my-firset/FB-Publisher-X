@@ -14,8 +14,6 @@ import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.ArrayAdapter;
-import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -25,6 +23,8 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.WindowCompat;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.button.MaterialButton;
@@ -39,12 +39,13 @@ import java.util.Random;
 
 /**
  * Publisher X — Independent Native Marketing Dashboard (Arabic)
- * Hidden WebView only for background campaign execution.
+ * Phase 3: RecyclerView, live progress, 10s timeout recovery.
  */
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "PublisherX";
     private static final String PREFS = "publisherx_prefs";
+    private static final long PAGE_TIMEOUT_MS = 10000L;
 
     private BottomNavigationView bottomNav;
     private WebView hiddenWebView;
@@ -61,6 +62,9 @@ public class MainActivity extends AppCompatActivity {
     private int postedCount = 0;
     private int failedCount = 0;
     private String lastLog = "";
+
+    private Runnable timeoutRunnable;
+    private final List<Runnable> progressListeners = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -131,13 +135,26 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 if (isRunning && currentIndex >= 0 && currentIndex < groupUrls.size()) {
-                    handler.postDelayed(() -> injectAndPost(postText), 2500);
+                    // Cancel previous timeout and start a fresh 10s window for injection
+                    cancelTimeout();
+                    handler.postDelayed(() -> injectAndPost(postText), 2000);
+                    // Arm timeout: if no result within 10s after page load → fail and continue
+                    timeoutRunnable = () -> {
+                        if (isRunning && currentIndex >= 0) {
+                            Log.w(TAG, "Timeout for group index " + currentIndex);
+                            failedCount++;
+                            prefs.edit().putInt("failed_count", failedCount).apply();
+                            lastLog = "✗ فشل (مهلة 10ث) " + (currentIndex + 1) + "/" + groupUrls.size();
+                            notifyProgress();
+                            scheduleNext();
+                        }
+                    };
+                    handler.postDelayed(timeoutRunnable, PAGE_TIMEOUT_MS);
                 }
             }
         });
         hiddenWebView.setVisibility(View.GONE);
 
-        // Restore cookies if saved
         String c = prefs.getString("account_cookies", "");
         if (!c.isEmpty()) {
             CookieManager cm = CookieManager.getInstance();
@@ -146,6 +163,13 @@ public class MainActivity extends AppCompatActivity {
                 if (!p.isEmpty()) cm.setCookie("https://m.facebook.com", p);
             }
             cm.flush();
+        }
+    }
+
+    private void cancelTimeout() {
+        if (timeoutRunnable != null) {
+            handler.removeCallbacks(timeoutRunnable);
+            timeoutRunnable = null;
         }
     }
 
@@ -188,22 +212,27 @@ public class MainActivity extends AppCompatActivity {
         isRunning = true;
         currentIndex = -1;
         lastLog = "بدء الحملة…";
+        notifyProgress();
         processNext();
         Toast.makeText(this, R.string.toast_started, Toast.LENGTH_SHORT).show();
     }
 
     public void stopCampaign() {
         isRunning = false;
+        cancelTimeout();
         lastLog = "تم الإيقاف بواسطة المستخدم";
+        notifyProgress();
         Toast.makeText(this, R.string.toast_stopped, Toast.LENGTH_SHORT).show();
     }
 
     private void processNext() {
         if (!isRunning) return;
+        cancelTimeout();
         currentIndex++;
         if (currentIndex >= groupUrls.size()) {
             isRunning = false;
             lastLog = "انتهت الحملة — ناجح: " + postedCount + " | فاشل: " + failedCount;
+            notifyProgress();
             handler.post(() -> Toast.makeText(this, R.string.toast_finished, Toast.LENGTH_LONG).show());
             return;
         }
@@ -212,11 +241,13 @@ public class MainActivity extends AppCompatActivity {
             url = "https://m.facebook.com/groups/" + url;
         }
         lastLog = "جاري: " + (currentIndex + 1) + "/" + groupUrls.size() + " — " + groupNames.get(currentIndex);
+        notifyProgress();
         Log.i(TAG, "Background load: " + url);
         hiddenWebView.loadUrl(url);
     }
 
     private void injectAndPost(String text) {
+        if (!isRunning) return;
         String safe = text.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n").replace("\"", "\\\"");
         String js =
             "(function(){" +
@@ -251,23 +282,44 @@ public class MainActivity extends AppCompatActivity {
             delay = minDelaySec + new Random().nextInt(maxDelaySec - minDelaySec + 1);
         }
         lastLog = "انتظار " + delay + " ثانية…";
+        notifyProgress();
         handler.postDelayed(this::processNext, delay * 1000L);
+    }
+
+    private void notifyProgress() {
+        handler.post(() -> {
+            for (Runnable r : new ArrayList<>(progressListeners)) {
+                try { r.run(); } catch (Exception ignored) {}
+            }
+        });
+    }
+
+    public void addProgressListener(Runnable r) {
+        if (r != null && !progressListeners.contains(r)) progressListeners.add(r);
+    }
+
+    public void removeProgressListener(Runnable r) {
+        progressListeners.remove(r);
     }
 
     public class Bridge {
         @JavascriptInterface
         public void onResult(boolean success, String msg) {
-            Log.i(TAG, "Post result: " + success + " / " + msg);
-            if (success) {
-                postedCount++;
-                prefs.edit().putInt("posted_count", postedCount).apply();
-                lastLog = "✓ نجح " + (currentIndex + 1) + "/" + groupUrls.size();
-            } else {
-                failedCount++;
-                prefs.edit().putInt("failed_count", failedCount).apply();
-                lastLog = "✗ فشل " + (currentIndex + 1) + " (" + msg + ")";
-            }
-            scheduleNext();
+            handler.post(() -> {
+                cancelTimeout();
+                Log.i(TAG, "Post result: " + success + " / " + msg);
+                if (success) {
+                    postedCount++;
+                    prefs.edit().putInt("posted_count", postedCount).apply();
+                    lastLog = "✓ نجح " + (currentIndex + 1) + "/" + groupUrls.size();
+                } else {
+                    failedCount++;
+                    prefs.edit().putInt("failed_count", failedCount).apply();
+                    lastLog = "✗ فشل " + (currentIndex + 1) + " (" + msg + ")";
+                }
+                notifyProgress();
+                scheduleNext();
+            });
         }
     }
 
@@ -277,9 +329,63 @@ public class MainActivity extends AppCompatActivity {
         return (n.isEmpty() && c.isEmpty()) ? 0 : 1;
     }
 
+    // ── Groups Adapter ────────────────────────────────────────────────
+
+    public static class GroupsAdapter extends RecyclerView.Adapter<GroupsAdapter.VH> {
+        private final List<String> names;
+        private final List<String> urls;
+        private final OnLongClickListener longClickListener;
+
+        public interface OnLongClickListener {
+            void onLongClick(int position);
+        }
+
+        public GroupsAdapter(List<String> names, List<String> urls, OnLongClickListener listener) {
+            this.names = names;
+            this.urls = urls;
+            this.longClickListener = listener;
+        }
+
+        @NonNull
+        @Override
+        public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View v = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_group, parent, false);
+            return new VH(v);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull VH h, int position) {
+            h.name.setText(names.get(position));
+            h.url.setText(urls.get(position));
+            h.itemView.setOnLongClickListener(v -> {
+                if (longClickListener != null) {
+                    longClickListener.onLongClick(h.getAdapterPosition());
+                }
+                return true;
+            });
+        }
+
+        @Override
+        public int getItemCount() {
+            return names.size();
+        }
+
+        static class VH extends RecyclerView.ViewHolder {
+            final TextView name, url;
+            VH(View v) {
+                super(v);
+                name = v.findViewById(R.id.itemGroupName);
+                url = v.findViewById(R.id.itemGroupUrl);
+            }
+        }
+    }
+
     // ── Fragments ─────────────────────────────────────────────────────
 
     public static class DashboardFragment extends Fragment {
+        private Runnable progressUpdater;
+
         @Nullable
         @Override
         public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -293,32 +399,46 @@ public class MainActivity extends AppCompatActivity {
             ProgressBar prog = v.findViewById(R.id.campaignProgress);
             TextView log = v.findViewById(R.id.logPreview);
 
-            statG.setText(String.valueOf(act.groupUrls.size()));
-            statP.setText(String.valueOf(act.postedCount));
-            statF.setText(String.valueOf(act.failedCount));
-            statA.setText(String.valueOf(act.accountCount()));
+            progressUpdater = () -> {
+                if (!isAdded()) return;
+                statG.setText(String.valueOf(act.groupUrls.size()));
+                statP.setText(String.valueOf(act.postedCount));
+                statF.setText(String.valueOf(act.failedCount));
+                statA.setText(String.valueOf(act.accountCount()));
 
-            if (act.isRunning) {
-                status.setText(getString(R.string.status_running) + " " +
-                        (act.currentIndex + 1) + "/" + act.groupUrls.size());
-                prog.setVisibility(View.VISIBLE);
-                if (act.groupUrls.size() > 0) {
-                    prog.setProgress((act.currentIndex + 1) * 100 / act.groupUrls.size());
+                if (act.isRunning) {
+                    status.setText(getString(R.string.status_running) + " " +
+                            (act.currentIndex + 1) + "/" + act.groupUrls.size());
+                    prog.setVisibility(View.VISIBLE);
+                    if (act.groupUrls.size() > 0) {
+                        prog.setProgress(Math.max(0, (act.currentIndex + 1) * 100 / act.groupUrls.size()));
+                    }
+                } else {
+                    status.setText(R.string.status_idle);
+                    prog.setVisibility(View.GONE);
                 }
-            } else {
-                status.setText(R.string.status_idle);
-                prog.setVisibility(View.GONE);
-            }
 
-            String logText = "ناجح: " + act.postedCount +
-                    " | فاشل: " + act.failedCount +
-                    " | مجموعات: " + act.groupUrls.size();
-            if (!act.lastLog.isEmpty()) logText += "\n" + act.lastLog;
-            log.setText(logText);
+                String logText = "ناجح: " + act.postedCount +
+                        " | فاشل: " + act.failedCount +
+                        " | مجموعات: " + act.groupUrls.size();
+                if (!act.lastLog.isEmpty()) logText += "\n" + act.lastLog;
+                log.setText(logText);
+            };
+            progressUpdater.run();
+            act.addProgressListener(progressUpdater);
 
             v.findViewById(R.id.btnQuickStart).setOnClickListener(btn ->
                     act.bottomNav.setSelectedItemId(R.id.nav_campaign));
             return v;
+        }
+
+        @Override
+        public void onDestroyView() {
+            MainActivity act = (MainActivity) getActivity();
+            if (act != null && progressUpdater != null) {
+                act.removeProgressListener(progressUpdater);
+            }
+            super.onDestroyView();
         }
     }
 
@@ -374,6 +494,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public static class GroupsFragment extends Fragment {
+        private GroupsAdapter adapter;
+
         @Nullable
         @Override
         public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -382,12 +504,20 @@ public class MainActivity extends AppCompatActivity {
             TextInputEditText urlIn = v.findViewById(R.id.inputGroupUrl);
             TextInputEditText nameIn = v.findViewById(R.id.inputGroupName);
             TextInputEditText importIn = v.findViewById(R.id.inputImportList);
-            ListView list = v.findViewById(R.id.listGroups);
+            RecyclerView recycler = v.findViewById(R.id.recyclerGroups);
             TextView count = v.findViewById(R.id.groupsCount);
 
-            ArrayAdapter<String> adapter = new ArrayAdapter<>(act,
-                    android.R.layout.simple_list_item_1, act.groupNames);
-            list.setAdapter(adapter);
+            recycler.setLayoutManager(new LinearLayoutManager(act));
+            adapter = new GroupsAdapter(act.groupNames, act.groupUrls, position -> {
+                if (position >= 0 && position < act.groupUrls.size()) {
+                    act.groupUrls.remove(position);
+                    act.groupNames.remove(position);
+                    act.saveGroups();
+                    adapter.notifyItemRemoved(position);
+                    count.setText(getString(R.string.groups_count, act.groupUrls.size()));
+                }
+            });
+            recycler.setAdapter(adapter);
             count.setText(getString(R.string.groups_count, act.groupUrls.size()));
 
             v.findViewById(R.id.btnAddGroup).setOnClickListener(btn -> {
@@ -401,7 +531,7 @@ public class MainActivity extends AppCompatActivity {
                 act.groupUrls.add(u);
                 act.groupNames.add(n);
                 act.saveGroups();
-                adapter.notifyDataSetChanged();
+                adapter.notifyItemInserted(act.groupUrls.size() - 1);
                 count.setText(getString(R.string.groups_count, act.groupUrls.size()));
                 urlIn.setText("");
                 nameIn.setText("");
@@ -414,6 +544,7 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
                 String[] lines = raw.split("\n");
+                int start = act.groupUrls.size();
                 int added = 0;
                 for (String line : lines) {
                     String u = line.trim();
@@ -423,34 +554,31 @@ public class MainActivity extends AppCompatActivity {
                     added++;
                 }
                 act.saveGroups();
-                adapter.notifyDataSetChanged();
+                if (added > 0) {
+                    adapter.notifyItemRangeInserted(start, added);
+                }
                 count.setText(getString(R.string.groups_count, act.groupUrls.size()));
                 importIn.setText("");
                 Toast.makeText(act, "تمت إضافة " + added + " مجموعة", Toast.LENGTH_SHORT).show();
             });
 
             v.findViewById(R.id.btnClearGroups).setOnClickListener(btn -> {
+                int size = act.groupUrls.size();
                 act.groupUrls.clear();
                 act.groupNames.clear();
                 act.saveGroups();
-                adapter.notifyDataSetChanged();
+                adapter.notifyItemRangeRemoved(0, size);
                 count.setText(getString(R.string.groups_count, 0));
                 Toast.makeText(act, R.string.toast_groups_cleared, Toast.LENGTH_SHORT).show();
             });
 
-            list.setOnItemLongClickListener((parent, view, position, id) -> {
-                act.groupUrls.remove(position);
-                act.groupNames.remove(position);
-                act.saveGroups();
-                adapter.notifyDataSetChanged();
-                count.setText(getString(R.string.groups_count, act.groupUrls.size()));
-                return true;
-            });
             return v;
         }
     }
 
     public static class CampaignFragment extends Fragment {
+        private Runnable progressUpdater;
+
         @Nullable
         @Override
         public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -467,11 +595,17 @@ public class MainActivity extends AppCompatActivity {
             textIn.setText(act.postText);
             minIn.setText(String.valueOf(act.minDelaySec));
             maxIn.setText(String.valueOf(act.maxDelaySec));
-            String state = act.isRunning ? getString(R.string.running) : getString(R.string.ready);
-            info.setText(getString(R.string.campaign_info, act.groupUrls.size(), state));
-            log.setText(act.isRunning ? act.lastLog : getString(R.string.waiting));
-            startBtn.setVisibility(act.isRunning ? View.GONE : View.VISIBLE);
-            stopBtn.setVisibility(act.isRunning ? View.VISIBLE : View.GONE);
+
+            progressUpdater = () -> {
+                if (!isAdded()) return;
+                String state = act.isRunning ? getString(R.string.running) : getString(R.string.ready);
+                info.setText(getString(R.string.campaign_info, act.groupUrls.size(), state));
+                log.setText(act.lastLog.isEmpty() ? getString(R.string.waiting) : act.lastLog);
+                startBtn.setVisibility(act.isRunning ? View.GONE : View.VISIBLE);
+                stopBtn.setVisibility(act.isRunning ? View.VISIBLE : View.GONE);
+            };
+            progressUpdater.run();
+            act.addProgressListener(progressUpdater);
 
             startBtn.setOnClickListener(btn -> {
                 String t = textIn.getText() != null ? textIn.getText().toString() : "";
@@ -479,20 +613,19 @@ public class MainActivity extends AppCompatActivity {
                 try { minD = Integer.parseInt(minIn.getText().toString()); } catch (Exception ignored) {}
                 try { maxD = Integer.parseInt(maxIn.getText().toString()); } catch (Exception ignored) {}
                 act.startCampaign(t, minD, maxD);
-                startBtn.setVisibility(View.GONE);
-                stopBtn.setVisibility(View.VISIBLE);
-                info.setText(getString(R.string.campaign_info, act.groupUrls.size(), getString(R.string.running)));
-                log.setText(act.lastLog);
             });
 
-            stopBtn.setOnClickListener(btn -> {
-                act.stopCampaign();
-                startBtn.setVisibility(View.VISIBLE);
-                stopBtn.setVisibility(View.GONE);
-                info.setText(getString(R.string.campaign_info, act.groupUrls.size(), getString(R.string.stopped)));
-                log.setText(act.lastLog);
-            });
+            stopBtn.setOnClickListener(btn -> act.stopCampaign());
             return v;
+        }
+
+        @Override
+        public void onDestroyView() {
+            MainActivity act = (MainActivity) getActivity();
+            if (act != null && progressUpdater != null) {
+                act.removeProgressListener(progressUpdater);
+            }
+            super.onDestroyView();
         }
     }
 
@@ -542,6 +675,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        cancelTimeout();
         if (hiddenWebView != null) hiddenWebView.destroy();
         super.onDestroy();
     }
