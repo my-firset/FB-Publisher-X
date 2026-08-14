@@ -5,12 +5,13 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@color/background"
-    android:padding="16dp">
+    android:padding="16dp"
+    android:layoutDirection="rtl">
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Group Lists"
+        android:text="@string/groups_title"
         android:textColor="@color/on_background"
         android:textSize="22sp"
         android:textStyle="bold"
@@ -26,9 +27,10 @@
             android:id="@+id/inputGroupUrl"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Group URL or ID"
+            android:hint="@string/hint_group_url"
             android:textColor="@color/on_surface"
-            android:inputType="textUri" />
+            android:inputType="textUri"
+            android:gravity="start" />
     </com.google.android.material.textfield.TextInputLayout>
 
     <com.google.android.material.textfield.TextInputLayout
@@ -41,9 +43,27 @@
             android:id="@+id/inputGroupName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Display name (optional)"
+            android:hint="@string/hint_group_name"
             android:textColor="@color/on_surface"
-            android:inputType="text" />
+            android:inputType="text"
+            android:gravity="start" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:boxBackgroundMode="outline"
+        app:boxStrokeColor="@color/primary"
+        android:layout_marginBottom="8dp">
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/inputImportList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/hint_import_list"
+            android:textColor="@color/on_surface"
+            android:inputType="textMultiLine"
+            android:minLines="2"
+            android:gravity="start|top" />
     </com.google.android.material.textfield.TextInputLayout>
 
     <LinearLayout
@@ -56,17 +76,27 @@
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"
-            android:text="Add"
+            android:text="@string/btn_add_group"
             android:textAllCaps="false"
             app:cornerRadius="10dp"
             app:backgroundTint="@color/primary" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnImportGroups"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="6dp"
+            android:text="@string/btn_import"
+            android:textAllCaps="false"
+            app:cornerRadius="10dp"
+            app:backgroundTint="@color/secondary" />
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnClearGroups"
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"
-            android:layout_marginStart="8dp"
-            android:text="Clear All"
+            android:text="@string/btn_clear_groups"
             android:textAllCaps="false"
             app:cornerRadius="10dp"
             app:backgroundTint="@color/surface_variant"
@@ -78,7 +108,7 @@
         android:id="@+id/groupsCount"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="0 groups saved"
+        android:text="0 مجموعة محفوظة"
         android:textColor="@color/text_secondary"
         android:textSize="13sp"
         android:layout_marginBottom="8dp" />
