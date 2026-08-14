@@ -10,6 +10,7 @@ import android.os.Looper;
 import android.util.Log;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
@@ -44,6 +45,7 @@ public class MainActivity extends AppCompatActivity {
     private final List<PostTask> queue = new ArrayList<>();
     private int currentIndex = -1;
     private boolean isPosting = false;
+    private boolean isSyncingGroups = false;
     private boolean showingDashboard = true;
     private long delayBetweenPostsMs = 45000;
     private String currentGroupLabel = "";
@@ -83,6 +85,7 @@ public class MainActivity extends AppCompatActivity {
 
             if (id == R.id.nav_home) {
                 isPosting = false;
+                isSyncingGroups = false;
                 webView.loadUrl(DASHBOARD_URL);
                 return true;
             }
@@ -166,6 +169,11 @@ public class MainActivity extends AppCompatActivity {
                 showingDashboard = false;
                 if (url.contains("facebook.com") || url.contains("fb.com")) {
                     injectDomHelpers(view);
+
+                    if (isSyncingGroups && (url.contains("/groups") || url.contains("memberships"))) {
+                        mainHandler.postDelayed(() -> extractGroupsFromPage(view), 3500);
+                    }
+
                     if (isPosting && currentIndex >= 0 && currentIndex < queue.size()) {
                         mainHandler.postDelayed(() -> {
                             if (currentIndex < queue.size()) {
@@ -182,6 +190,73 @@ public class MainActivity extends AppCompatActivity {
             public void onProgressChanged(WebView view, int newProgress) {
                 progressBar.setProgress(newProgress);
                 progressBar.setVisibility(newProgress == 100 ? ProgressBar.GONE : ProgressBar.VISIBLE);
+            }
+        });
+    }
+
+    /** Extract visible group links from the loaded Facebook groups page */
+    private void extractGroupsFromPage(WebView view) {
+        String js =
+            "(function(){" +
+            "  var results = [];" +
+            "  var seen = {};" +
+            "  var anchors = document.querySelectorAll('a[href*=\\"/groups/\\"]');" +
+            "  for (var i = 0; i < anchors.length; i++) {" +
+            "    var a = anchors[i];" +
+            "    var href = a.href || a.getAttribute('href') || '';" +
+            "    if (!href) continue;" +
+            "    var m = href.match(/groups\\/(\\d+)/);" +
+            "    if (!m) m = href.match(/groups\\/([a-zA-Z0-9._-]+)/);" +
+            "    if (!m) continue;" +
+            "    var id = m[1];" +
+            "    if (id === 'create' || id === 'feed' || id === 'joins' || id === 'category') continue;" +
+            "    var url = 'https://m.facebook.com/groups/' + id;" +
+            "    if (seen[url]) continue;" +
+            "    seen[url] = true;" +
+            "    var name = (a.innerText || a.textContent || '').trim().replace(/\\s+/g,' ');" +
+            "    if (!name || name.length < 2) name = url;" +
+            "    if (name.length > 80) name = name.substring(0, 80);" +
+            "    results.push({url: url, name: name});" +
+            "  }" +
+            "  return JSON.stringify(results);" +
+            "})();";
+
+        view.evaluateJavascript(js, new ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String value) {
+                isSyncingGroups = false;
+                // evaluateJavascript returns a JSON-encoded string (quoted)
+                String json = value;
+                if (json != null && json.startsWith("\"") && json.endsWith("\"")) {
+                    json = json.substring(1, json.length() - 1)
+                            .replace("\\\"", "\"")
+                            .replace("\\\\", "\\");
+                }
+                if (json == null || json.equals("null") || json.equals("[]")) {
+                    mainHandler.post(() -> {
+                        Toast.makeText(MainActivity.this,
+                                "لم يُعثر على مجموعات — تأكد من تسجيل الدخول ومرّر الصفحة",
+                                Toast.LENGTH_LONG).show();
+                        bottomNav.setSelectedItemId(R.id.nav_queue);
+                        webView.loadUrl(DASHBOARD_URL);
+                    });
+                    return;
+                }
+                final String payload = json;
+                mainHandler.post(() -> {
+                    bottomNav.setSelectedItemId(R.id.nav_queue);
+                    webView.loadUrl(DASHBOARD_URL);
+                    mainHandler.postDelayed(() -> {
+                        String safe = payload.replace("\\", "\\\\").replace("'", "\\'");
+                        webView.evaluateJavascript(
+                                "window.onGroupsSynced && window.onGroupsSynced('" + safe + "');", null);
+                        webView.evaluateJavascript(
+                                "document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));" +
+                                "document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));" +
+                                "var t=document.querySelector('[data-tab=groups]'); if(t){t.classList.add('active');}" +
+                                "var p=document.getElementById('panel-groups'); if(p) p.classList.add('active');", null);
+                    }, 600);
+                });
             }
         });
     }
@@ -302,9 +377,24 @@ public class MainActivity extends AppCompatActivity {
             mainHandler.post(() -> {
                 bottomNav.setSelectedItemId(R.id.nav_facebook);
                 webView.loadUrl(FB_GROUPS);
-                Toast.makeText(MainActivity.this,
-                        "افتح مجموعة وانسخ رابطها ثم ارجع للوحة لإضافته",
-                        Toast.LENGTH_LONG).show();
+            });
+        }
+
+        @JavascriptInterface
+        public void syncGroups() {
+            mainHandler.post(() -> {
+                String cookies = CookieManager.getInstance().getCookie("https://m.facebook.com");
+                boolean ok = cookies != null && (cookies.contains("c_user=") || cookies.contains("xs="));
+                if (!ok) {
+                    Toast.makeText(MainActivity.this,
+                            "سجّل الدخول أولاً من تبويب فيسبوك أو الحساب",
+                            Toast.LENGTH_LONG).show();
+                    return;
+                }
+                isSyncingGroups = true;
+                bottomNav.setSelectedItemId(R.id.nav_facebook);
+                webView.loadUrl(FB_GROUPS);
+                Toast.makeText(MainActivity.this, "جاري جلب المجموعات...", Toast.LENGTH_SHORT).show();
             });
         }
 
@@ -314,9 +404,6 @@ public class MainActivity extends AppCompatActivity {
                 String cookies = CookieManager.getInstance().getCookie("https://m.facebook.com");
                 boolean ok = cookies != null && (cookies.contains("c_user=") || cookies.contains("xs="));
                 webView.evaluateJavascript("window.setSessionStatus && window.setSessionStatus(" + ok + ");", null);
-                if (!showingDashboard) {
-                    Toast.makeText(MainActivity.this, ok ? "الجلسة نشطة" : "غير مسجل الدخول", Toast.LENGTH_SHORT).show();
-                }
             });
         }
 
@@ -352,6 +439,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onBackPressed() {
         if (!showingDashboard && currentTab != R.id.nav_home) {
+            isSyncingGroups = false;
             bottomNav.setSelectedItemId(R.id.nav_home);
             webView.loadUrl(DASHBOARD_URL);
             return;
