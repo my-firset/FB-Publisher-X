@@ -28,22 +28,29 @@
     <string name="cookies_label">كوكيز الجلسة (اختياري)</string>
     <string name="hint_cookies">الصق الكوكيز هنا إن لزم</string>
     <string name="btn_save_account">حفظ الحساب</string>
+    <string name="btn_login_fb">تسجيل الدخول عبر فيسبوك</string>
+    <string name="btn_done_login">تم — استخراج الكوكيز</string>
     <string name="account_none">لا يوجد حساب محفوظ</string>
     <string name="account_saved">تم الحفظ: %1$s</string>
     <string name="session_active">الجلسة: نشطة</string>
     <string name="session_inactive">الجلسة: غير نشطة</string>
+    <string name="login_title">تسجيل الدخول إلى فيسبوك</string>
+    <string name="toast_login_ok">تم استخراج الجلسة بنجاح</string>
+    <string name="toast_login_empty">لم يتم العثور على كوكيز — تأكد من تسجيل الدخول</string>
 
     <!-- Groups -->
     <string name="groups_title">قائمة المجموعات</string>
-    <string name="hint_group_url">رابط المجموعة أو المعرف</string>
+    <string name="hint_group_url">رابط المجموعة أو المعرف (عام أو خاص)</string>
     <string name="hint_group_name">الاسم المعروض (اختياري)</string>
     <string name="hint_import_list">الصق قائمة روابط (سطر لكل مجموعة)</string>
     <string name="btn_add_group">إضافة</string>
     <string name="btn_import">استيراد قائمة</string>
+    <string name="btn_export">تصدير القائمة</string>
     <string name="btn_clear_groups">مسح الكل</string>
     <string name="groups_count">%1$d مجموعة محفوظة</string>
     <string name="toast_enter_url">أدخل الرابط أو المعرف</string>
     <string name="toast_groups_cleared">تم مسح المجموعات</string>
+    <string name="toast_exported">تم نسخ القائمة إلى الحافظة</string>
 
     <!-- Campaign -->
     <string name="campaign_title">إنشاء الحملة</string>
@@ -57,6 +64,7 @@
     <string name="stopped">متوقف</string>
     <string name="btn_start">بدء الحملة</string>
     <string name="btn_stop">إيقاف الحملة</string>
+    <string name="btn_retry_failed">إعادة محاولة الفاشل</string>
     <string name="campaign_log">سجل الحملة</string>
     <string name="waiting">في الانتظار…</string>
     <string name="toast_add_groups">أضف مجموعات أولاً</string>
@@ -64,6 +72,8 @@
     <string name="toast_started">تم بدء الحملة في الخلفية</string>
     <string name="toast_stopped">تم إيقاف الحملة</string>
     <string name="toast_finished">انتهت الحملة</string>
+    <string name="toast_retry">جاري إعادة المحاولة…</string>
+    <string name="rest_msg">استراحة حماية 5 دقائق بعد 15 منشور ناجح…</string>
 
     <!-- Settings -->
     <string name="settings_title">الإعدادات</string>
@@ -73,5 +83,5 @@
     <string name="btn_clear_data">مسح كل البيانات المحلية</string>
     <string name="toast_settings_saved">تم حفظ الإعدادات</string>
     <string name="toast_data_cleared">تم مسح كل البيانات</string>
-    <string name="app_version">Publisher X v1.1 — لوحة تسويق مستقلة</string>
+    <string name="app_version">Publisher X v1.2 — لوحة تسويق مستقلة + حماية Anti-Ban</string>
 </resources>
