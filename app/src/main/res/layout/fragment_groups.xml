@@ -113,13 +113,13 @@
         android:textSize="13sp"
         android:layout_marginBottom="8dp" />
 
-    <ListView
-        android:id="@+id/listGroups"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerGroups"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:divider="@color/card_stroke"
-        android:dividerHeight="1dp"
-        android:background="@color/surface" />
+        android:background="@color/surface"
+        android:clipToPadding="false"
+        android:paddingBottom="8dp" />
 
 </LinearLayout>
