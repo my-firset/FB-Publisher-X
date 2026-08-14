@@ -1,6 +1,10 @@
 package com.faset.publisherx;
 
 import android.annotation.SuppressLint;
+import android.app.Dialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
@@ -9,11 +13,14 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -33,19 +40,25 @@ import com.google.android.material.textfield.TextInputEditText;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 
 /**
  * Publisher X — Independent Native Marketing Dashboard (Arabic)
- * Phase 3: RecyclerView, live progress, 10s timeout recovery.
+ * Phase 4: Interactive FB login, Anti-Ban rest (5min after 15 successes),
+ * detailed activity logs, Retry Failed, Export groups, public groups support.
  */
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "PublisherX";
     private static final String PREFS = "publisherx_prefs";
     private static final long PAGE_TIMEOUT_MS = 10000L;
+    private static final int REST_AFTER_SUCCESS = 15;
+    private static final long REST_DURATION_MS = 5 * 60 * 1000L; // 5 minutes
 
     private BottomNavigationView bottomNav;
     private WebView hiddenWebView;
@@ -54,6 +67,7 @@ public class MainActivity extends AppCompatActivity {
 
     private final List<String> groupUrls = new ArrayList<>();
     private final List<String> groupNames = new ArrayList<>();
+    private final List<String> activityLogs = new ArrayList<>();
     private String postText = "";
     private int minDelaySec = 30;
     private int maxDelaySec = 60;
@@ -61,6 +75,7 @@ public class MainActivity extends AppCompatActivity {
     private int currentIndex = -1;
     private int postedCount = 0;
     private int failedCount = 0;
+    private int successStreak = 0;
     private String lastLog = "";
 
     private Runnable timeoutRunnable;
@@ -94,6 +109,7 @@ public class MainActivity extends AppCompatActivity {
         maxDelaySec = prefs.getInt("max_delay", 60);
         postedCount = prefs.getInt("posted_count", 0);
         failedCount = prefs.getInt("failed_count", 0);
+        successStreak = prefs.getInt("success_streak", 0);
 
         groupUrls.clear();
         groupNames.clear();
@@ -103,6 +119,14 @@ public class MainActivity extends AppCompatActivity {
                 JSONObject o = arr.getJSONObject(i);
                 groupUrls.add(o.optString("url", ""));
                 groupNames.add(o.optString("name", o.optString("url", "")));
+            }
+        } catch (Exception ignored) {}
+
+        activityLogs.clear();
+        try {
+            JSONArray logs = new JSONArray(prefs.getString("activity_logs", "[]"));
+            for (int i = 0; i < logs.length(); i++) {
+                activityLogs.add(logs.optString(i, ""));
             }
         } catch (Exception ignored) {}
     }
@@ -120,6 +144,27 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception ignored) {}
     }
 
+    private void saveLogs() {
+        try {
+            JSONArray arr = new JSONArray();
+            // Keep last 100 entries
+            int start = Math.max(0, activityLogs.size() - 100);
+            for (int i = start; i < activityLogs.size(); i++) {
+                arr.put(activityLogs.get(i));
+            }
+            prefs.edit().putString("activity_logs", arr.toString()).apply();
+        } catch (Exception ignored) {}
+    }
+
+    private void addLog(String entry) {
+        String ts = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
+        String full = "[" + ts + "] " + entry;
+        activityLogs.add(full);
+        lastLog = entry;
+        saveLogs();
+        notifyProgress();
+    }
+
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     private void setupHiddenWebView() {
         WebSettings s = hiddenWebView.getSettings();
@@ -135,17 +180,14 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 if (isRunning && currentIndex >= 0 && currentIndex < groupUrls.size()) {
-                    // Cancel previous timeout and start a fresh 10s window for injection
                     cancelTimeout();
                     handler.postDelayed(() -> injectAndPost(postText), 2000);
-                    // Arm timeout: if no result within 10s after page load → fail and continue
                     timeoutRunnable = () -> {
                         if (isRunning && currentIndex >= 0) {
                             Log.w(TAG, "Timeout for group index " + currentIndex);
                             failedCount++;
                             prefs.edit().putInt("failed_count", failedCount).apply();
-                            lastLog = "✗ فشل (مهلة 10ث) " + (currentIndex + 1) + "/" + groupUrls.size();
-                            notifyProgress();
+                            addLog("✗ فشل (مهلة 10ث) " + (currentIndex + 1) + "/" + groupUrls.size());
                             scheduleNext();
                         }
                     };
@@ -160,7 +202,10 @@ public class MainActivity extends AppCompatActivity {
             CookieManager cm = CookieManager.getInstance();
             for (String part : c.split(";")) {
                 String p = part.trim();
-                if (!p.isEmpty()) cm.setCookie("https://m.facebook.com", p);
+                if (!p.isEmpty()) {
+                    cm.setCookie("https://m.facebook.com", p);
+                    cm.setCookie("https://www.facebook.com", p);
+                }
             }
             cm.flush();
         }
@@ -189,6 +234,77 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    // ── Interactive Login Dialog ───────────────────────────────────────
+
+    @SuppressLint("SetJavaScriptEnabled")
+    public void openFacebookLogin() {
+        Dialog dialog = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+
+        FrameLayout root = new FrameLayout(this);
+        WebView loginWeb = new WebView(this);
+        WebSettings ws = loginWeb.getSettings();
+        ws.setJavaScriptEnabled(true);
+        ws.setDomStorageEnabled(true);
+        ws.setUserAgentString(
+                "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 " +
+                "(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
+        CookieManager.getInstance().setAcceptCookie(true);
+        CookieManager.getInstance().setAcceptThirdPartyCookies(loginWeb, true);
+
+        loginWeb.setWebViewClient(new WebViewClient());
+        loginWeb.loadUrl("https://m.facebook.com/");
+
+        MaterialButton doneBtn = new MaterialButton(this);
+        doneBtn.setText(R.string.btn_done_login);
+        doneBtn.setAllCaps(false);
+        FrameLayout.LayoutParams btnLp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        btnLp.gravity = android.view.Gravity.BOTTOM;
+        btnLp.setMargins(24, 24, 24, 48);
+        doneBtn.setLayoutParams(btnLp);
+
+        root.addView(loginWeb, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        root.addView(doneBtn);
+        dialog.setContentView(root);
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(
+                    WindowManager.LayoutParams.MATCH_PARENT,
+                    WindowManager.LayoutParams.MATCH_PARENT);
+        }
+
+        doneBtn.setOnClickListener(v -> {
+            String cookies = CookieManager.getInstance().getCookie("https://m.facebook.com");
+            if (cookies == null || cookies.trim().isEmpty()) {
+                cookies = CookieManager.getInstance().getCookie("https://www.facebook.com");
+            }
+            if (cookies != null && !cookies.trim().isEmpty() && cookies.contains("c_user")) {
+                prefs.edit().putString("account_cookies", cookies).apply();
+                // Also inject into hidden WebView
+                CookieManager cm = CookieManager.getInstance();
+                for (String part : cookies.split(";")) {
+                    String p = part.trim();
+                    if (!p.isEmpty()) {
+                        cm.setCookie("https://m.facebook.com", p);
+                        cm.setCookie("https://www.facebook.com", p);
+                    }
+                }
+                cm.flush();
+                addLog("✓ تم تسجيل الدخول واستخراج الجلسة");
+                Toast.makeText(this, R.string.toast_login_ok, Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, R.string.toast_login_empty, Toast.LENGTH_LONG).show();
+            }
+            dialog.dismiss();
+            // Refresh accounts fragment if visible
+            notifyProgress();
+        });
+
+        dialog.show();
+    }
+
     // ── Campaign engine ───────────────────────────────────────────────
 
     public void startCampaign(String text, int minD, int maxD) {
@@ -211,8 +327,8 @@ public class MainActivity extends AppCompatActivity {
 
         isRunning = true;
         currentIndex = -1;
-        lastLog = "بدء الحملة…";
-        notifyProgress();
+        successStreak = 0;
+        addLog("بدء الحملة…");
         processNext();
         Toast.makeText(this, R.string.toast_started, Toast.LENGTH_SHORT).show();
     }
@@ -220,9 +336,25 @@ public class MainActivity extends AppCompatActivity {
     public void stopCampaign() {
         isRunning = false;
         cancelTimeout();
-        lastLog = "تم الإيقاف بواسطة المستخدم";
-        notifyProgress();
+        addLog("تم الإيقاف بواسطة المستخدم");
         Toast.makeText(this, R.string.toast_stopped, Toast.LENGTH_SHORT).show();
+    }
+
+    public void retryFailed() {
+        if (isRunning) {
+            Toast.makeText(this, "أوقف الحملة أولاً", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        // Simple retry: reset failed counter and restart campaign with same text
+        if (postText == null || postText.trim().isEmpty()) {
+            Toast.makeText(this, R.string.toast_enter_text, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        failedCount = 0;
+        prefs.edit().putInt("failed_count", 0).apply();
+        addLog("إعادة محاولة الفاشل — بدء من جديد");
+        Toast.makeText(this, R.string.toast_retry, Toast.LENGTH_SHORT).show();
+        startCampaign(postText, minDelaySec, maxDelaySec);
     }
 
     private void processNext() {
@@ -231,17 +363,16 @@ public class MainActivity extends AppCompatActivity {
         currentIndex++;
         if (currentIndex >= groupUrls.size()) {
             isRunning = false;
-            lastLog = "انتهت الحملة — ناجح: " + postedCount + " | فاشل: " + failedCount;
-            notifyProgress();
+            addLog("انتهت الحملة — ناجح: " + postedCount + " | فاشل: " + failedCount);
             handler.post(() -> Toast.makeText(this, R.string.toast_finished, Toast.LENGTH_LONG).show());
             return;
         }
         String url = groupUrls.get(currentIndex);
+        // Public groups support: accept full URL or just ID
         if (!url.startsWith("http")) {
             url = "https://m.facebook.com/groups/" + url;
         }
-        lastLog = "جاري: " + (currentIndex + 1) + "/" + groupUrls.size() + " — " + groupNames.get(currentIndex);
-        notifyProgress();
+        addLog("جاري: " + (currentIndex + 1) + "/" + groupUrls.size() + " — " + groupNames.get(currentIndex));
         Log.i(TAG, "Background load: " + url);
         hiddenWebView.loadUrl(url);
     }
@@ -277,12 +408,19 @@ public class MainActivity extends AppCompatActivity {
 
     private void scheduleNext() {
         if (!isRunning) return;
+
+        // Anti-Ban: mandatory rest after every 15 successful posts
+        if (successStreak > 0 && successStreak % REST_AFTER_SUCCESS == 0) {
+            addLog(getString(R.string.rest_msg));
+            handler.postDelayed(this::processNext, REST_DURATION_MS);
+            return;
+        }
+
         int delay = minDelaySec;
         if (maxDelaySec > minDelaySec) {
             delay = minDelaySec + new Random().nextInt(maxDelaySec - minDelaySec + 1);
         }
-        lastLog = "انتظار " + delay + " ثانية…";
-        notifyProgress();
+        addLog("انتظار " + delay + " ثانية…");
         handler.postDelayed(this::processNext, delay * 1000L);
     }
 
@@ -310,14 +448,17 @@ public class MainActivity extends AppCompatActivity {
                 Log.i(TAG, "Post result: " + success + " / " + msg);
                 if (success) {
                     postedCount++;
-                    prefs.edit().putInt("posted_count", postedCount).apply();
-                    lastLog = "✓ نجح " + (currentIndex + 1) + "/" + groupUrls.size();
+                    successStreak++;
+                    prefs.edit()
+                            .putInt("posted_count", postedCount)
+                            .putInt("success_streak", successStreak)
+                            .apply();
+                    addLog("✓ نجح " + (currentIndex + 1) + "/" + groupUrls.size());
                 } else {
                     failedCount++;
                     prefs.edit().putInt("failed_count", failedCount).apply();
-                    lastLog = "✗ فشل " + (currentIndex + 1) + " (" + msg + ")";
+                    addLog("✗ فشل " + (currentIndex + 1) + " (" + msg + ")");
                 }
-                notifyProgress();
                 scheduleNext();
             });
         }
@@ -327,6 +468,16 @@ public class MainActivity extends AppCompatActivity {
         String n = prefs.getString("account_name", "");
         String c = prefs.getString("account_cookies", "");
         return (n.isEmpty() && c.isEmpty()) ? 0 : 1;
+    }
+
+    public String getActivityLogText() {
+        if (activityLogs.isEmpty()) return getString(R.string.no_activity);
+        StringBuilder sb = new StringBuilder();
+        int start = Math.max(0, activityLogs.size() - 30);
+        for (int i = start; i < activityLogs.size(); i++) {
+            sb.append(activityLogs.get(i)).append("\n");
+        }
+        return sb.toString().trim();
     }
 
     // ── Groups Adapter ────────────────────────────────────────────────
@@ -418,11 +569,7 @@ public class MainActivity extends AppCompatActivity {
                     prog.setVisibility(View.GONE);
                 }
 
-                String logText = "ناجح: " + act.postedCount +
-                        " | فاشل: " + act.failedCount +
-                        " | مجموعات: " + act.groupUrls.size();
-                if (!act.lastLog.isEmpty()) logText += "\n" + act.lastLog;
-                log.setText(logText);
+                log.setText(act.getActivityLogText());
             };
             progressUpdater.run();
             act.addProgressListener(progressUpdater);
@@ -453,18 +600,23 @@ public class MainActivity extends AppCompatActivity {
             TextView status = v.findViewById(R.id.accountStatus);
             TextView session = v.findViewById(R.id.sessionIndicator);
 
-            name.setText(act.prefs.getString("account_name", ""));
-            cookies.setText(act.prefs.getString("account_cookies", ""));
-            String saved = act.prefs.getString("account_name", "");
-            String cSaved = act.prefs.getString("account_cookies", "");
-            status.setText(saved.isEmpty() ? getString(R.string.account_none) : getString(R.string.account_saved, saved));
-            if (!cSaved.isEmpty()) {
-                session.setText(R.string.session_active);
-                session.setTextColor(0xFF22C55E);
-            } else {
-                session.setText(R.string.session_inactive);
-                session.setTextColor(0xFFF59E0B);
-            }
+            Runnable refresh = () -> {
+                if (!isAdded()) return;
+                name.setText(act.prefs.getString("account_name", ""));
+                cookies.setText(act.prefs.getString("account_cookies", ""));
+                String saved = act.prefs.getString("account_name", "");
+                String cSaved = act.prefs.getString("account_cookies", "");
+                status.setText(saved.isEmpty() ? getString(R.string.account_none) : getString(R.string.account_saved, saved));
+                if (!cSaved.isEmpty() && cSaved.contains("c_user")) {
+                    session.setText(R.string.session_active);
+                    session.setTextColor(0xFF22C55E);
+                } else {
+                    session.setText(R.string.session_inactive);
+                    session.setTextColor(0xFFF59E0B);
+                }
+            };
+            refresh.run();
+            act.addProgressListener(refresh);
 
             v.findViewById(R.id.btnSaveAccount).setOnClickListener(btn -> {
                 String n = name.getText() != null ? name.getText().toString().trim() : "";
@@ -477,18 +629,19 @@ public class MainActivity extends AppCompatActivity {
                     CookieManager cm = CookieManager.getInstance();
                     for (String part : c.split(";")) {
                         String p = part.trim();
-                        if (!p.isEmpty()) cm.setCookie("https://m.facebook.com", p);
+                        if (!p.isEmpty()) {
+                            cm.setCookie("https://m.facebook.com", p);
+                            cm.setCookie("https://www.facebook.com", p);
+                        }
                     }
                     cm.flush();
-                    session.setText(R.string.session_active);
-                    session.setTextColor(0xFF22C55E);
-                } else {
-                    session.setText(R.string.session_inactive);
-                    session.setTextColor(0xFFF59E0B);
                 }
-                status.setText(getString(R.string.account_saved, n.isEmpty() ? "—" : n));
+                refresh.run();
                 Toast.makeText(act, R.string.btn_save_account, Toast.LENGTH_SHORT).show();
             });
+
+            v.findViewById(R.id.btnLoginFb).setOnClickListener(btn -> act.openFacebookLogin());
+
             return v;
         }
     }
@@ -562,6 +715,22 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(act, "تمت إضافة " + added + " مجموعة", Toast.LENGTH_SHORT).show();
             });
 
+            v.findViewById(R.id.btnExportGroups).setOnClickListener(btn -> {
+                if (act.groupUrls.isEmpty()) {
+                    Toast.makeText(act, "لا توجد مجموعات للتصدير", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                StringBuilder sb = new StringBuilder();
+                for (String u : act.groupUrls) {
+                    sb.append(u).append("\n");
+                }
+                ClipboardManager cm = (ClipboardManager) act.getSystemService(Context.CLIPBOARD_SERVICE);
+                if (cm != null) {
+                    cm.setPrimaryClip(ClipData.newPlainText("groups", sb.toString().trim()));
+                    Toast.makeText(act, R.string.toast_exported, Toast.LENGTH_SHORT).show();
+                }
+            });
+
             v.findViewById(R.id.btnClearGroups).setOnClickListener(btn -> {
                 int size = act.groupUrls.size();
                 act.groupUrls.clear();
@@ -591,6 +760,7 @@ public class MainActivity extends AppCompatActivity {
             TextView log = v.findViewById(R.id.campaignLog);
             MaterialButton startBtn = v.findViewById(R.id.btnStartCampaign);
             MaterialButton stopBtn = v.findViewById(R.id.btnStopCampaign);
+            MaterialButton retryBtn = v.findViewById(R.id.btnRetryFailed);
 
             textIn.setText(act.postText);
             minIn.setText(String.valueOf(act.minDelaySec));
@@ -600,9 +770,10 @@ public class MainActivity extends AppCompatActivity {
                 if (!isAdded()) return;
                 String state = act.isRunning ? getString(R.string.running) : getString(R.string.ready);
                 info.setText(getString(R.string.campaign_info, act.groupUrls.size(), state));
-                log.setText(act.lastLog.isEmpty() ? getString(R.string.waiting) : act.lastLog);
+                log.setText(act.getActivityLogText());
                 startBtn.setVisibility(act.isRunning ? View.GONE : View.VISIBLE);
                 stopBtn.setVisibility(act.isRunning ? View.VISIBLE : View.GONE);
+                retryBtn.setVisibility(act.isRunning ? View.GONE : View.VISIBLE);
             };
             progressUpdater.run();
             act.addProgressListener(progressUpdater);
@@ -616,6 +787,7 @@ public class MainActivity extends AppCompatActivity {
             });
 
             stopBtn.setOnClickListener(btn -> act.stopCampaign());
+            retryBtn.setOnClickListener(btn -> act.retryFailed());
             return v;
         }
 
@@ -657,9 +829,11 @@ public class MainActivity extends AppCompatActivity {
                 act.prefs.edit().clear().apply();
                 act.groupUrls.clear();
                 act.groupNames.clear();
+                act.activityLogs.clear();
                 act.postText = "";
                 act.postedCount = 0;
                 act.failedCount = 0;
+                act.successStreak = 0;
                 act.lastLog = "";
                 Toast.makeText(act, R.string.toast_data_cleared, Toast.LENGTH_SHORT).show();
             });
