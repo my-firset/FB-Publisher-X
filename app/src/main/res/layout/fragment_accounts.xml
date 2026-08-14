@@ -29,11 +29,21 @@
             android:text="@string/btn_login_fb"
             android:textAllCaps="false"
             android:textSize="15sp"
-            android:layout_marginBottom="16dp"
+            android:layout_marginBottom="8dp"
             app:cornerRadius="12dp"
             app:backgroundTint="@color/primary"
             app:icon="@android:drawable/ic_menu_share"
             app:iconGravity="textStart" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnLogout"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="@string/btn_logout"
+            android:textAllCaps="false"
+            android:layout_marginBottom="16dp"
+            app:cornerRadius="12dp"
+            app:backgroundTint="@color/error" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
@@ -123,6 +133,46 @@
             android:textColor="@color/warning"
             android:textSize="13sp"
             android:layout_marginTop="8dp" />
+
+        <TextView
+            android:id="@+id/profileIdText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/profile_id_none"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            android:layout_marginTop="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/profile_stats_title"
+            android:textColor="@color/on_surface"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/profileStatGroups"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp" />
+        <TextView
+            android:id="@+id/profileStatPosted"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            android:layout_marginTop="4dp" />
+        <TextView
+            android:id="@+id/profileStatFailed"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            android:layout_marginTop="4dp" />
 
     </LinearLayout>
 </ScrollView>

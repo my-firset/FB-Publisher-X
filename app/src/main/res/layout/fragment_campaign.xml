@@ -32,7 +32,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:layout_marginBottom="12dp"
+            android:layout_marginBottom="8dp"
             app:boxBackgroundMode="outline"
             app:boxStrokeColor="@color/primary">
             <com.google.android.material.textfield.TextInputEditText
@@ -45,6 +45,79 @@
                 android:minLines="5"
                 android:gravity="start|top" />
         </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSpintaxInfo"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/btn_spintax_info"
+            android:textAllCaps="false"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/spintaxHelp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/spintax_help"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:visibility="gone"
+            android:background="@color/surface"
+            android:padding="10dp"
+            android:layout_marginBottom="12dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/media_label"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="4dp">
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPickMedia"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="@string/btn_pick_media"
+                android:textAllCaps="false"
+                android:layout_marginEnd="6dp"
+                app:cornerRadius="10dp"
+                app:backgroundTint="@color/secondary" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnClearMedia"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="@string/btn_clear_media"
+                android:textAllCaps="false"
+                android:layout_marginStart="6dp"
+                app:cornerRadius="10dp"
+                app:backgroundTint="@color/error" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/mediaCountText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/media_count"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/media_note"
+            android:textColor="@color/warning"
+            android:textSize="11sp"
+            android:layout_marginBottom="12dp" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -64,7 +137,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="@string/hint_min_delay"
-                    android:text="30"
+                    android:text="5"
                     android:textColor="@color/on_surface"
                     android:inputType="number"
                     android:gravity="start" />
@@ -82,7 +155,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="@string/hint_max_delay"
-                    android:text="60"
+                    android:text="10"
                     android:textColor="@color/on_surface"
                     android:inputType="number"
                     android:gravity="start" />
