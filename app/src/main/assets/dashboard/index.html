@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>FB Publisher X</title>
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --card: #141414;
+      --border: #2a2a2a;
+      --primary: #1877F2;
+      --primary-dim: #0d65d9;
+      --text: #f0f0f0;
+      --muted: #9a9a9a;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Arabic", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 70px;
+    }
+    header {
+      background: linear-gradient(135deg, #1877F2, #0d65d9);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    header h1 { font-size: 18px; font-weight: 700; }
+    header .badge {
+      background: rgba(255,255,255,0.2);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+    }
+    .tabs {
+      display: flex;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 56px;
+      z-index: 40;
+      overflow-x: auto;
+    }
+    .tab {
+      flex: 1;
+      min-width: 70px;
+      text-align: center;
+      padding: 12px 8px;
+      font-size: 13px;
+      color: var(--muted);
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .tab.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+      font-weight: 600;
+    }
+    .panel { display: none; padding: 16px; }
+    .panel.active { display: block; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .card h3 {
+      font-size: 14px;
+      margin-bottom: 12px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    textarea, input, select {
+      width: 100%;
+      background: #1a1a1a;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 12px;
+      font-size: 14px;
+      outline: none;
+      margin-bottom: 12px;
+    }
+    textarea { min-height: 120px; resize: vertical; }
+    textarea:focus, input:focus, select:focus {
+      border-color: var(--primary);
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 8px;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:active { background: var(--primary-dim); }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-success { background: var(--success); color: #fff; }
+    .row { display: flex; gap: 8px; }
+    .row .btn { flex: 1; }
+    .group-item, .log-item {
+      background: #1a1a1a;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+    }
+    .group-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); }
+    .status {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+    .status.ok { background: rgba(34,197,94,0.2); color: var(--success); }
+    .status.fail { background: rgba(239,68,68,0.2); color: var(--danger); }
+    .status.pending { background: rgba(245,158,11,0.2); color: var(--warning); }
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 32px 16px;
+      font-size: 13px;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .stat {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      text-align: center;
+    }
+    .stat .num { font-size: 22px; font-weight: 700; color: var(--primary); }
+    .stat .lbl { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    #toast {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #222;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      z-index: 100;
+      pointer-events: none;
+    }
+    #toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>FB Publisher X</h1>
+    <span class="badge" id="sessionBadge">غير متصل</span>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="post">منشور</button>
+    <button class="tab" data-tab="groups">جروبات</button>
+    <button class="tab" data-tab="settings">إعدادات</button>
+    <button class="tab" data-tab="logs">سجل</button>
+  </nav>
+
+  <!-- منشور -->
+  <section id="panel-post" class="panel active">
+    <div class="stats">
+      <div class="stat"><div class="num" id="statGroups">0</div><div class="lbl">جروبات محددة</div></div>
+      <div class="stat"><div class="num" id="statQueue">0</div><div class="lbl">في الطابور</div></div>
+    </div>
+    <div class="card">
+      <h3>نص المنشور</h3>
+      <textarea id="postText" placeholder="اكتب نص المنشور هنا..."></textarea>
+      <div class="row">
+        <button class="btn btn-primary" id="btnStart">ابدأ النشر</button>
+        <button class="btn btn-outline" id="btnStop">إيقاف</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>فتح فيسبوك</h3>
+      <button class="btn btn-outline" id="btnOpenFb">فتح m.facebook.com</button>
+    </div>
+  </section>
+
+  <!-- جروبات -->
+  <section id="panel-groups" class="panel">
+    <div class="card">
+      <h3>إضافة مجموعة</h3>
+      <label>رابط المجموعة (m.facebook.com/groups/...)</label>
+      <input type="text" id="groupUrl" placeholder="https://m.facebook.com/groups/123456" />
+      <label>اسم المجموعة (اختياري)</label>
+      <input type="text" id="groupName" placeholder="اسم المجموعة" />
+      <button class="btn btn-primary" id="btnAddGroup">إضافة</button>
+    </div>
+    <div class="card">
+      <h3>القائمة</h3>
+      <div id="groupList" class="empty">لا توجد مجموعات بعد</div>
+      <button class="btn btn-outline" id="btnClearGroups" style="margin-top:8px">مسح الكل</button>
+    </div>
+  </section>
+
+  <!-- إعدادات -->
+  <section id="panel-settings" class="panel">
+    <div class="card">
+      <h3>التأخير بين المنشورات</h3>
+      <label>بالثواني (الحد الأدنى 15)</label>
+      <input type="number" id="delaySec" value="45" min="15" max="600" />
+      <button class="btn btn-primary" id="btnSaveSettings">حفظ</button>
+    </div>
+    <div class="card">
+      <h3>الجلسة</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px">سجّل دخولك في فيسبوك داخل التطبيق ليتم حفظ الجلسة.</p>
+      <button class="btn btn-outline" id="btnDetectSession">فحص الجلسة</button>
+    </div>
+  </section>
+
+  <!-- سجل -->
+  <section id="panel-logs" class="panel">
+    <div class="card">
+      <h3>سجل العمليات</h3>
+      <div id="logList" class="empty">لا توجد عمليات بعد</div>
+      <button class="btn btn-outline" id="btnClearLogs" style="margin-top:8px">مسح السجل</button>
+    </div>
+  </section>
+
+  <div id="toast"></div>
+
+  <script>
+    // ── Tabs ──────────────────────────────────────────────
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    // ── State (localStorage) ──────────────────────────────
+    let groups = JSON.parse(localStorage.getItem('fbx_groups') || '[]');
+    let logs = JSON.parse(localStorage.getItem('fbx_logs') || '[]');
+    let delaySec = parseInt(localStorage.getItem('fbx_delay') || '45', 10);
+
+    function saveGroups() { localStorage.setItem('fbx_groups', JSON.stringify(groups)); renderGroups(); updateStats(); }
+    function saveLogs() { localStorage.setItem('fbx_logs', JSON.stringify(logs)); renderLogs(); }
+    function toast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 2500);
+    }
+
+    function updateStats() {
+      const selected = groups.filter(g => g.selected).length;
+      document.getElementById('statGroups').textContent = selected;
+      document.getElementById('statQueue').textContent = selected;
+    }
+
+    function renderGroups() {
+      const box = document.getElementById('groupList');
+      if (!groups.length) {
+        box.className = 'empty';
+        box.textContent = 'لا توجد مجموعات بعد';
+        return;
+      }
+      box.className = '';
+      box.innerHTML = groups.map((g, i) => `
+        <div class="group-item">
+          <label style="display:flex;align-items:center;gap:10px;margin:0;flex:1">
+            <input type="checkbox" ${g.selected ? 'checked' : ''} onchange="toggleGroup(${i})" />
+            <span>${g.name || g.url}</span>
+          </label>
+          <button onclick="removeGroup(${i})" style="background:none;border:none;color:var(--danger);font-size:16px;cursor:pointer">✕</button>
+        </div>
+      `).join('');
+    }
+
+    function renderLogs() {
+      const box = document.getElementById('logList');
+      if (!logs.length) {
+        box.className = 'empty';
+        box.textContent = 'لا توجد عمليات بعد';
+        return;
+      }
+      box.className = '';
+      box.innerHTML = logs.slice().reverse().map(l => `
+        <div class="log-item">
+          <div>
+            <div>${l.group || '-'}</div>
+            <div style="font-size:11px;color:var(--muted)">${l.time}</div>
+          </div>
+          <span class="status ${l.ok ? 'ok' : 'fail'}">${l.ok ? 'نجح' : 'فشل'}</span>
+        </div>
+      `).join('');
+    }
+
+    window.toggleGroup = function(i) {
+      groups[i].selected = !groups[i].selected;
+      saveGroups();
+    };
+    window.removeGroup = function(i) {
+      groups.splice(i, 1);
+      saveGroups();
+    };
+
+    // ── Bridge helpers ────────────────────────────────────
+    function hasBridge() {
+      return typeof AndroidBridge !== 'undefined';
+    }
+
+    function callBridge(method, ...args) {
+      if (!hasBridge()) {
+        toast('الجسر غير متصل');
+        console.warn('AndroidBridge missing');
+        return;
+      }
+      try {
+        return AndroidBridge[method](...args);
+      } catch (e) {
+        console.error(e);
+        toast('خطأ: ' + e.message);
+      }
+    }
+
+    // Called from Android when a post finishes
+    window.onNativePostResult = function(success, message, groupLabel) {
+      logs.push({
+        ok: !!success,
+        group: groupLabel || message,
+        time: new Date().toLocaleString('ar')
+      });
+      saveLogs();
+      toast(success ? 'تم النشر بنجاح' : 'فشل: ' + message);
+    };
+
+    // ── Buttons ───────────────────────────────────────────
+    document.getElementById('btnAddGroup').onclick = () => {
+      const url = document.getElementById('groupUrl').value.trim();
+      const name = document.getElementById('groupName').value.trim();
+      if (!url || !url.includes('facebook.com')) {
+        toast('أدخل رابط مجموعة صحيح');
+        return;
+      }
+      groups.push({ url, name: name || url, selected: true });
+      document.getElementById('groupUrl').value = '';
+      document.getElementById('groupName').value = '';
+      saveGroups();
+      toast('تمت الإضافة');
+    };
+
+    document.getElementById('btnClearGroups').onclick = () => {
+      groups = [];
+      saveGroups();
+      toast('تم المسح');
+    };
+
+    document.getElementById('btnSaveSettings').onclick = () => {
+      let v = parseInt(document.getElementById('delaySec').value, 10);
+      if (isNaN(v) || v < 15) v = 15;
+      delaySec = v;
+      localStorage.setItem('fbx_delay', String(v));
+      callBridge('setDelaySeconds', v);
+      toast('تم حفظ الإعدادات (' + v + ' ثانية)');
+    };
+
+    document.getElementById('btnStart').onclick = () => {
+      const text = document.getElementById('postText').value.trim();
+      if (!text) { toast('اكتب نص المنشور أولاً'); return; }
+      const selected = groups.filter(g => g.selected);
+      if (!selected.length) { toast('حدد مجموعة واحدة على الأقل'); return; }
+
+      callBridge('clearQueue');
+      selected.forEach(g => callBridge('addTask', g.url, text));
+      callBridge('setDelaySeconds', delaySec);
+      callBridge('startQueue');
+      toast('بدأ النشر على ' + selected.length + ' مجموعة');
+    };
+
+    document.getElementById('btnStop').onclick = () => {
+      callBridge('stopQueue');
+      toast('تم الإيقاف');
+    };
+
+    document.getElementById('btnOpenFb').onclick = () => {
+      callBridge('openFacebook');
+    };
+
+    document.getElementById('btnDetectSession').onclick = () => {
+      callBridge('detectSession');
+      toast('جاري فحص الجلسة...');
+    };
+
+    document.getElementById('btnClearLogs').onclick = () => {
+      logs = [];
+      saveLogs();
+      toast('تم مسح السجل');
+    };
+
+    // Called from Android to update session badge
+    window.setSessionStatus = function(ok) {
+      const b = document.getElementById('sessionBadge');
+      b.textContent = ok ? 'متصل' : 'غير متصل';
+      b.style.background = ok ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.2)';
+    };
+
+    // Init
+    document.getElementById('delaySec').value = delaySec;
+    renderGroups();
+    renderLogs();
+    updateStats();
+    if (hasBridge()) {
+      callBridge('setDelaySeconds', delaySec);
+      callBridge('onDashboardReady');
+    }
+  </script>
+</body>
+</html>

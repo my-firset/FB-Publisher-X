@@ -24,16 +24,11 @@ import androidx.core.view.WindowCompat;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Architecture:
- * - Native Java owns the queue, delays, group list, and session.
- * - Injected JS only performs pure DOM actions (fill text, click Post, detect result).
- * - Communication via AndroidBridge (JavascriptInterface).
- */
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "FBPublisherX";
-    private static final String HOME_URL = "https://m.facebook.com";
+    private static final String DASHBOARD_URL = "file:///android_asset/dashboard/index.html";
+    private static final String FB_HOME = "https://m.facebook.com";
     private static final String MOBILE_UA =
             "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 " +
             "(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36";
@@ -42,11 +37,12 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
-    // ── Native queue state ──────────────────────────────────────────
     private final List<PostTask> queue = new ArrayList<>();
     private int currentIndex = -1;
     private boolean isPosting = false;
-    private long delayBetweenPostsMs = 45000; // 45 seconds default
+    private boolean showingDashboard = true;
+    private long delayBetweenPostsMs = 45000;
+    private String currentGroupLabel = "";
 
     public static class PostTask {
         public final String groupUrl;
@@ -68,16 +64,7 @@ public class MainActivity extends AppCompatActivity {
         progressBar = findViewById(R.id.progressBar);
 
         setupWebView();
-
-        // Example queue (replace with your real groups / text later)
-        // queue.add(new PostTask("https://m.facebook.com/groups/YOUR_GROUP_ID", "Hello from FB Publisher X"));
-
-        Intent intent = getIntent();
-        if (intent != null && Intent.ACTION_VIEW.equals(intent.getAction()) && intent.getData() != null) {
-            webView.loadUrl(intent.getData().toString());
-        } else {
-            webView.loadUrl(HOME_URL);
-        }
+        webView.loadUrl(DASHBOARD_URL);
     }
 
     private void setupWebView() {
@@ -87,28 +74,27 @@ public class MainActivity extends AppCompatActivity {
         settings.setDatabaseEnabled(true);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
-        settings.setSupportZoom(true);
+        settings.setSupportZoom(false);
         settings.setBuiltInZoomControls(false);
         settings.setDisplayZoomControls(false);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
-        settings.setAllowFileAccess(false);
+        settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setUserAgentString(MOBILE_UA);
 
-        CookieManager cookieManager = CookieManager.getInstance();
-        cookieManager.setAcceptCookie(true);
-        cookieManager.setAcceptThirdPartyCookies(webView, true);
+        CookieManager cm = CookieManager.getInstance();
+        cm.setAcceptCookie(true);
+        cm.setAcceptThirdPartyCookies(webView, true);
 
-        // Bridge: Java <-> JS
         webView.addJavascriptInterface(new AndroidBridge(), "AndroidBridge");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
-                if (url.startsWith("http://") || url.startsWith("https://")) {
+                if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file://")) {
                     return false;
                 }
                 try {
@@ -125,15 +111,19 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 progressBar.setVisibility(ProgressBar.GONE);
-                if (url != null && (url.contains("facebook.com") || url.contains("fb.com"))) {
-                    injectDomHelpers(view);
+                if (url == null) return;
 
-                    // If we navigated to a group for the current task, trigger the post
+                if (url.startsWith("file://")) {
+                    showingDashboard = true;
+                    return;
+                }
+
+                showingDashboard = false;
+                if (url.contains("facebook.com") || url.contains("fb.com")) {
+                    injectDomHelpers(view);
                     if (isPosting && currentIndex >= 0 && currentIndex < queue.size()) {
                         PostTask task = queue.get(currentIndex);
-                        if (url.contains("/groups/") || url.contains(task.groupUrl)) {
-                            mainHandler.postDelayed(() -> executePostOnPage(task.text), 2500);
-                        }
+                        mainHandler.postDelayed(() -> executePostOnPage(task.text), 2800);
                     }
                 }
             }
@@ -148,110 +138,148 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    /** Pure DOM helpers only – no queue, no delays, no chrome.* */
     private void injectDomHelpers(WebView view) {
         String js =
             "(function(){" +
             "  if (window.__FBX_DOM__) return;" +
             "  window.__FBX_DOM__ = true;" +
-
-            // Fill the composer and click Post
             "  window.FBX_postText = function(text) {" +
             "    try {" +
-            "      var selectors = [" +
-            "        'div[contenteditable=\\'true\\']'," +
-            "        'div[role=\\'textbox\\']'," +
-            "        'textarea[name=\\'xc_message\\']'," +
-            "        'textarea'" +
-            "      ];" +
+            "      var sels = ['div[contenteditable=true]','div[role=textbox]','textarea[name=xc_message]','textarea'];" +
             "      var box = null;" +
-            "      for (var i=0;i<selectors.length;i++){" +
-            "        box = document.querySelector(selectors[i]);" +
-            "        if (box) break;" +
-            "      }" +
-            "      if (!box) { AndroidBridge.onPostResult(false, 'composer_not_found'); return; }" +
-
+            "      for (var i=0;i<sels.length;i++){ box=document.querySelector(sels[i]); if(box) break; }" +
+            "      if (!box) { AndroidBridge.onPostResult(false,'composer_not_found'); return; }" +
             "      box.focus();" +
-            "      if (box.tagName === 'TEXTAREA' || box.tagName === 'INPUT') {" +
-            "        box.value = text;" +
-            "        box.dispatchEvent(new Event('input', {bubbles:true}));" +
+            "      if (box.tagName==='TEXTAREA'||box.tagName==='INPUT'){" +
+            "        box.value=text; box.dispatchEvent(new Event('input',{bubbles:true}));" +
             "      } else {" +
-            "        box.innerText = text;" +
-            "        box.dispatchEvent(new InputEvent('input', {bubbles:true, data:text}));" +
+            "        box.innerText=text;" +
+            "        box.dispatchEvent(new InputEvent('input',{bubbles:true,data:text}));" +
             "      }" +
-
             "      setTimeout(function(){" +
-            "        var btn = document.querySelector('button[type=\\'submit\\'], button[name=\\'view_post\\'], div[role=\\'button\\'][aria-label*=\\'Post\\'], div[role=\\'button\\'][aria-label*=\\'نشر\\]');" +
-            "        if (!btn) {" +
-            "          var buttons = document.querySelectorAll('button, div[role=\\'button\\']');" +
-            "          for (var j=0;j<buttons.length;j++){" +
-            "            var t = (buttons[j].innerText||'').trim().toLowerCase();" +
-            "            if (t === 'post' || t === 'نشر' || t === 'share' || t === 'مشاركة') { btn = buttons[j]; break; }" +
+            "        var btn=document.querySelector(\"button[type=submit],button[name=view_post],div[role=button][aria-label*='Post'],div[role=button][aria-label*='نشر']\");" +
+            "        if(!btn){" +
+            "          var bs=document.querySelectorAll('button,div[role=button]');" +
+            "          for(var j=0;j<bs.length;j++){" +
+            "            var t=(bs[j].innerText||'').trim().toLowerCase();" +
+            "            if(t==='post'||t==='نشر'||t==='share'||t==='مشاركة'){btn=bs[j];break;}" +
             "          }" +
             "        }" +
-            "        if (btn) {" +
-            "          btn.click();" +
-            "          setTimeout(function(){ AndroidBridge.onPostResult(true, 'clicked'); }, 3000);" +
-            "        } else {" +
-            "          AndroidBridge.onPostResult(false, 'post_button_not_found');" +
-            "        }" +
-            "      }, 1200);" +
-            "    } catch(e) {" +
-            "      AndroidBridge.onPostResult(false, String(e));" +
-            "    }" +
+            "        if(btn){ btn.click(); setTimeout(function(){AndroidBridge.onPostResult(true,'clicked');},3500); }" +
+            "        else { AndroidBridge.onPostResult(false,'post_button_not_found'); }" +
+            "      },1400);" +
+            "    } catch(e){ AndroidBridge.onPostResult(false,String(e)); }" +
             "  };" +
-
             "  console.log('[FBX] DOM helpers ready');" +
             "})();";
-
         view.evaluateJavascript(js, null);
     }
 
     private void executePostOnPage(String text) {
-        String safe = text.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n");
+        String safe = text
+                .replace("\\", "\\\\")
+                .replace("'", "\\'")
+                .replace("\n", "\\n")
+                .replace("\r", "");
         webView.evaluateJavascript("window.FBX_postText && window.FBX_postText('" + safe + "');", null);
-    }
-
-    /** Start the native queue */
-    public void startQueue() {
-        if (queue.isEmpty()) {
-            Toast.makeText(this, "Queue is empty", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        isPosting = true;
-        currentIndex = -1;
-        processNext();
     }
 
     private void processNext() {
         currentIndex++;
         if (currentIndex >= queue.size()) {
             isPosting = false;
-            Log.i(TAG, "Queue finished");
-            Toast.makeText(this, "Queue finished", Toast.LENGTH_LONG).show();
+            mainHandler.post(() -> {
+                Toast.makeText(this, "انتهى الطابور", Toast.LENGTH_LONG).show();
+                webView.loadUrl(DASHBOARD_URL);
+            });
             return;
         }
         PostTask task = queue.get(currentIndex);
-        Log.i(TAG, "Navigating to group " + (currentIndex + 1) + "/" + queue.size());
+        currentGroupLabel = task.groupUrl;
+        Log.i(TAG, "Group " + (currentIndex + 1) + "/" + queue.size() + " -> " + task.groupUrl);
         webView.loadUrl(task.groupUrl);
-        // onPageFinished will trigger the actual post
     }
 
     private void scheduleNextAfterDelay() {
         mainHandler.postDelayed(this::processNext, delayBetweenPostsMs);
     }
 
-    /** Bridge called from JavaScript */
     public class AndroidBridge {
         @JavascriptInterface
-        public void onPostResult(boolean success, String message) {
-            Log.i(TAG, "Post result: success=" + success + " msg=" + message);
+        public void addTask(String groupUrl, String text) {
+            queue.add(new PostTask(groupUrl, text));
+            Log.i(TAG, "Task added: " + groupUrl);
+        }
+
+        @JavascriptInterface
+        public void clearQueue() {
+            queue.clear();
+            currentIndex = -1;
+            isPosting = false;
+        }
+
+        @JavascriptInterface
+        public void setDelaySeconds(int seconds) {
+            delayBetweenPostsMs = Math.max(15, seconds) * 1000L;
+        }
+
+        @JavascriptInterface
+        public void startQueue() {
             mainHandler.post(() -> {
-                Toast.makeText(MainActivity.this,
-                        success ? "Posted OK" : "Failed: " + message,
-                        Toast.LENGTH_SHORT).show();
+                if (queue.isEmpty()) {
+                    Toast.makeText(MainActivity.this, "الطابور فارغ", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                isPosting = true;
+                currentIndex = -1;
+                processNext();
+            });
+        }
+
+        @JavascriptInterface
+        public void stopQueue() {
+            isPosting = false;
+            mainHandler.post(() -> {
+                Toast.makeText(MainActivity.this, "تم إيقاف النشر", Toast.LENGTH_SHORT).show();
+                webView.loadUrl(DASHBOARD_URL);
+            });
+        }
+
+        @JavascriptInterface
+        public void openFacebook() {
+            mainHandler.post(() -> webView.loadUrl(FB_HOME));
+        }
+
+        @JavascriptInterface
+        public void detectSession() {
+            mainHandler.post(() -> {
+                // Simple heuristic: if we have FB cookies, consider logged in
+                String cookies = CookieManager.getInstance().getCookie("https://m.facebook.com");
+                boolean ok = cookies != null && (cookies.contains("c_user=") || cookies.contains("xs="));
+                webView.evaluateJavascript("window.setSessionStatus && window.setSessionStatus(" + ok + ");", null);
+                Toast.makeText(MainActivity.this, ok ? "الجلسة نشطة" : "غير مسجل الدخول", Toast.LENGTH_SHORT).show();
+            });
+        }
+
+        @JavascriptInterface
+        public void onDashboardReady() {
+            Log.i(TAG, "Dashboard ready");
+        }
+
+        @JavascriptInterface
+        public void onPostResult(boolean success, String message) {
+            Log.i(TAG, "Post result: " + success + " / " + message);
+            final String label = currentGroupLabel;
+            mainHandler.post(() -> {
+                String js = "window.onNativePostResult && window.onNativePostResult(" +
+                        success + ",'" + message.replace("'", "\\'") + "','" +
+                        (label != null ? label.replace("'", "\\'") : "") + "');";
+                // If we are still on FB page, go back to dashboard after a short delay for next item
                 if (isPosting) {
                     scheduleNextAfterDelay();
+                } else {
+                    webView.loadUrl(DASHBOARD_URL);
+                    mainHandler.postDelayed(() -> webView.evaluateJavascript(js, null), 600);
                 }
             });
         }
@@ -262,32 +290,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // ── Public helpers you can call from UI later ───────────────────
-    public void addTask(String groupUrl, String text) {
-        queue.add(new PostTask(groupUrl, text));
-    }
-
-    public void setDelaySeconds(int seconds) {
-        delayBetweenPostsMs = Math.max(10, seconds) * 1000L;
-    }
-
-    public void clearQueue() {
-        queue.clear();
-        currentIndex = -1;
-        isPosting = false;
-    }
-
-    @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        setIntent(intent);
-        if (intent != null && Intent.ACTION_VIEW.equals(intent.getAction()) && intent.getData() != null) {
-            webView.loadUrl(intent.getData().toString());
-        }
-    }
-
     @Override
     public void onBackPressed() {
+        if (!showingDashboard) {
+            webView.loadUrl(DASHBOARD_URL);
+            return;
+        }
         if (webView.canGoBack()) webView.goBack();
         else super.onBackPressed();
     }
