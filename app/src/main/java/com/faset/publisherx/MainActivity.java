@@ -38,9 +38,8 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Publisher X — Independent Native Marketing Dashboard
- * No Facebook UI, no visible WebView, pure Material Design fragments.
- * Hidden WebView is used only for background campaign execution.
+ * Publisher X — Independent Native Marketing Dashboard (Arabic)
+ * Hidden WebView only for background campaign execution.
  */
 public class MainActivity extends AppCompatActivity {
 
@@ -48,11 +47,10 @@ public class MainActivity extends AppCompatActivity {
     private static final String PREFS = "publisherx_prefs";
 
     private BottomNavigationView bottomNav;
-    private WebView hiddenWebView; // never shown to user
+    private WebView hiddenWebView;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private SharedPreferences prefs;
 
-    // Campaign state
     private final List<String> groupUrls = new ArrayList<>();
     private final List<String> groupNames = new ArrayList<>();
     private String postText = "";
@@ -61,6 +59,8 @@ public class MainActivity extends AppCompatActivity {
     private boolean isRunning = false;
     private int currentIndex = -1;
     private int postedCount = 0;
+    private int failedCount = 0;
+    private String lastLog = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,7 +76,6 @@ public class MainActivity extends AppCompatActivity {
         setupHiddenWebView();
         setupBottomNav();
 
-        // Default screen
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
                     .replace(R.id.fragment_container, new DashboardFragment())
@@ -90,6 +89,7 @@ public class MainActivity extends AppCompatActivity {
         minDelaySec = prefs.getInt("min_delay", 30);
         maxDelaySec = prefs.getInt("max_delay", 60);
         postedCount = prefs.getInt("posted_count", 0);
+        failedCount = prefs.getInt("failed_count", 0);
 
         groupUrls.clear();
         groupNames.clear();
@@ -118,7 +118,6 @@ public class MainActivity extends AppCompatActivity {
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     private void setupHiddenWebView() {
-        // Completely invisible, only for background queue execution
         WebSettings s = hiddenWebView.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -137,6 +136,17 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         hiddenWebView.setVisibility(View.GONE);
+
+        // Restore cookies if saved
+        String c = prefs.getString("account_cookies", "");
+        if (!c.isEmpty()) {
+            CookieManager cm = CookieManager.getInstance();
+            for (String part : c.split(";")) {
+                String p = part.trim();
+                if (!p.isEmpty()) cm.setCookie("https://m.facebook.com", p);
+            }
+            cm.flush();
+        }
     }
 
     private void setupBottomNav() {
@@ -155,15 +165,15 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    // ── Campaign logic (background only) ──────────────────────────────
+    // ── Campaign engine ───────────────────────────────────────────────
 
     public void startCampaign(String text, int minD, int maxD) {
         if (groupUrls.isEmpty()) {
-            Toast.makeText(this, "Add groups first", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.toast_add_groups, Toast.LENGTH_SHORT).show();
             return;
         }
         if (text == null || text.trim().isEmpty()) {
-            Toast.makeText(this, "Enter post text", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.toast_enter_text, Toast.LENGTH_SHORT).show();
             return;
         }
         postText = text.trim();
@@ -177,13 +187,15 @@ public class MainActivity extends AppCompatActivity {
 
         isRunning = true;
         currentIndex = -1;
+        lastLog = "بدء الحملة…";
         processNext();
-        Toast.makeText(this, "Campaign started in background", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, R.string.toast_started, Toast.LENGTH_SHORT).show();
     }
 
     public void stopCampaign() {
         isRunning = false;
-        Toast.makeText(this, "Campaign stopped", Toast.LENGTH_SHORT).show();
+        lastLog = "تم الإيقاف بواسطة المستخدم";
+        Toast.makeText(this, R.string.toast_stopped, Toast.LENGTH_SHORT).show();
     }
 
     private void processNext() {
@@ -191,19 +203,21 @@ public class MainActivity extends AppCompatActivity {
         currentIndex++;
         if (currentIndex >= groupUrls.size()) {
             isRunning = false;
-            handler.post(() -> Toast.makeText(this, "Campaign finished", Toast.LENGTH_LONG).show());
+            lastLog = "انتهت الحملة — ناجح: " + postedCount + " | فاشل: " + failedCount;
+            handler.post(() -> Toast.makeText(this, R.string.toast_finished, Toast.LENGTH_LONG).show());
             return;
         }
         String url = groupUrls.get(currentIndex);
         if (!url.startsWith("http")) {
             url = "https://m.facebook.com/groups/" + url;
         }
+        lastLog = "جاري: " + (currentIndex + 1) + "/" + groupUrls.size() + " — " + groupNames.get(currentIndex);
         Log.i(TAG, "Background load: " + url);
         hiddenWebView.loadUrl(url);
     }
 
     private void injectAndPost(String text) {
-        String safe = text.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n");
+        String safe = text.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n").replace("\"", "\\\"");
         String js =
             "(function(){" +
             "  try {" +
@@ -216,16 +230,15 @@ public class MainActivity extends AppCompatActivity {
             "    else{box.innerText='" + safe + "';}" +
             "    box.dispatchEvent(new Event('input',{bubbles:true}));" +
             "    setTimeout(function(){" +
-            "      var btn=document.querySelector('button[type=submit],div[role=button]');" +
-            "      var found=false;" +
+            "      var btn=null;" +
             "      var all=document.querySelectorAll('button,div[role=button]');" +
             "      for(var j=0;j<all.length;j++){" +
             "        var t=(all[j].innerText||'').trim().toLowerCase();" +
-            "        if(t==='post'||t==='نشر'||t==='share'||t==='مشاركة'){btn=all[j];found=true;break;}" +
+            "        if(t==='post'||t==='نشر'||t==='share'||t==='مشاركة'||t.indexOf('نشر')>=0){btn=all[j];break;}" +
             "      }" +
             "      if(btn){btn.click();AndroidBridge.onResult(true,'ok');}" +
             "      else{AndroidBridge.onResult(false,'no_button');}" +
-            "    },1200);" +
+            "    },1500);" +
             "  }catch(e){AndroidBridge.onResult(false,String(e));}" +
             "})();";
         hiddenWebView.evaluateJavascript(js, null);
@@ -237,6 +250,7 @@ public class MainActivity extends AppCompatActivity {
         if (maxDelaySec > minDelaySec) {
             delay = minDelaySec + new Random().nextInt(maxDelaySec - minDelaySec + 1);
         }
+        lastLog = "انتظار " + delay + " ثانية…";
         handler.postDelayed(this::processNext, delay * 1000L);
     }
 
@@ -247,9 +261,20 @@ public class MainActivity extends AppCompatActivity {
             if (success) {
                 postedCount++;
                 prefs.edit().putInt("posted_count", postedCount).apply();
+                lastLog = "✓ نجح " + (currentIndex + 1) + "/" + groupUrls.size();
+            } else {
+                failedCount++;
+                prefs.edit().putInt("failed_count", failedCount).apply();
+                lastLog = "✗ فشل " + (currentIndex + 1) + " (" + msg + ")";
             }
             scheduleNext();
         }
+    }
+
+    private int accountCount() {
+        String n = prefs.getString("account_name", "");
+        String c = prefs.getString("account_cookies", "");
+        return (n.isEmpty() && c.isEmpty()) ? 0 : 1;
     }
 
     // ── Fragments ─────────────────────────────────────────────────────
@@ -262,19 +287,34 @@ public class MainActivity extends AppCompatActivity {
             MainActivity act = (MainActivity) requireActivity();
             TextView statG = v.findViewById(R.id.statGroups);
             TextView statP = v.findViewById(R.id.statPosted);
+            TextView statF = v.findViewById(R.id.statFailed);
+            TextView statA = v.findViewById(R.id.statAccounts);
             TextView status = v.findViewById(R.id.statusText);
             ProgressBar prog = v.findViewById(R.id.campaignProgress);
             TextView log = v.findViewById(R.id.logPreview);
 
             statG.setText(String.valueOf(act.groupUrls.size()));
             statP.setText(String.valueOf(act.postedCount));
-            status.setText(act.isRunning ? "Running… " + (act.currentIndex + 1) + "/" + act.groupUrls.size()
-                    : "Idle — ready to start");
-            prog.setVisibility(act.isRunning ? View.VISIBLE : View.GONE);
-            if (act.isRunning && act.groupUrls.size() > 0) {
-                prog.setProgress((act.currentIndex + 1) * 100 / act.groupUrls.size());
+            statF.setText(String.valueOf(act.failedCount));
+            statA.setText(String.valueOf(act.accountCount()));
+
+            if (act.isRunning) {
+                status.setText(getString(R.string.status_running) + " " +
+                        (act.currentIndex + 1) + "/" + act.groupUrls.size());
+                prog.setVisibility(View.VISIBLE);
+                if (act.groupUrls.size() > 0) {
+                    prog.setProgress((act.currentIndex + 1) * 100 / act.groupUrls.size());
+                }
+            } else {
+                status.setText(R.string.status_idle);
+                prog.setVisibility(View.GONE);
             }
-            log.setText("Posted total: " + act.postedCount + "\nGroups: " + act.groupUrls.size());
+
+            String logText = "ناجح: " + act.postedCount +
+                    " | فاشل: " + act.failedCount +
+                    " | مجموعات: " + act.groupUrls.size();
+            if (!act.lastLog.isEmpty()) logText += "\n" + act.lastLog;
+            log.setText(logText);
 
             v.findViewById(R.id.btnQuickStart).setOnClickListener(btn ->
                     act.bottomNav.setSelectedItemId(R.id.nav_campaign));
@@ -291,11 +331,20 @@ public class MainActivity extends AppCompatActivity {
             TextInputEditText name = v.findViewById(R.id.inputAccountName);
             TextInputEditText cookies = v.findViewById(R.id.inputCookies);
             TextView status = v.findViewById(R.id.accountStatus);
+            TextView session = v.findViewById(R.id.sessionIndicator);
 
             name.setText(act.prefs.getString("account_name", ""));
             cookies.setText(act.prefs.getString("account_cookies", ""));
             String saved = act.prefs.getString("account_name", "");
-            status.setText(saved.isEmpty() ? "No account saved yet" : "Saved: " + saved);
+            String cSaved = act.prefs.getString("account_cookies", "");
+            status.setText(saved.isEmpty() ? getString(R.string.account_none) : getString(R.string.account_saved, saved));
+            if (!cSaved.isEmpty()) {
+                session.setText(R.string.session_active);
+                session.setTextColor(0xFF22C55E);
+            } else {
+                session.setText(R.string.session_inactive);
+                session.setTextColor(0xFFF59E0B);
+            }
 
             v.findViewById(R.id.btnSaveAccount).setOnClickListener(btn -> {
                 String n = name.getText() != null ? name.getText().toString().trim() : "";
@@ -304,16 +353,21 @@ public class MainActivity extends AppCompatActivity {
                         .putString("account_name", n)
                         .putString("account_cookies", c)
                         .apply();
-                // Apply cookies to hidden WebView if provided
                 if (!c.isEmpty()) {
                     CookieManager cm = CookieManager.getInstance();
                     for (String part : c.split(";")) {
-                        cm.setCookie("https://m.facebook.com", part.trim());
+                        String p = part.trim();
+                        if (!p.isEmpty()) cm.setCookie("https://m.facebook.com", p);
                     }
                     cm.flush();
+                    session.setText(R.string.session_active);
+                    session.setTextColor(0xFF22C55E);
+                } else {
+                    session.setText(R.string.session_inactive);
+                    session.setTextColor(0xFFF59E0B);
                 }
-                status.setText("Saved: " + (n.isEmpty() ? "(no label)" : n));
-                Toast.makeText(act, "Account saved locally", Toast.LENGTH_SHORT).show();
+                status.setText(getString(R.string.account_saved, n.isEmpty() ? "—" : n));
+                Toast.makeText(act, R.string.btn_save_account, Toast.LENGTH_SHORT).show();
             });
             return v;
         }
@@ -327,19 +381,20 @@ public class MainActivity extends AppCompatActivity {
             MainActivity act = (MainActivity) requireActivity();
             TextInputEditText urlIn = v.findViewById(R.id.inputGroupUrl);
             TextInputEditText nameIn = v.findViewById(R.id.inputGroupName);
+            TextInputEditText importIn = v.findViewById(R.id.inputImportList);
             ListView list = v.findViewById(R.id.listGroups);
             TextView count = v.findViewById(R.id.groupsCount);
 
             ArrayAdapter<String> adapter = new ArrayAdapter<>(act,
                     android.R.layout.simple_list_item_1, act.groupNames);
             list.setAdapter(adapter);
-            count.setText(act.groupUrls.size() + " groups saved");
+            count.setText(getString(R.string.groups_count, act.groupUrls.size()));
 
             v.findViewById(R.id.btnAddGroup).setOnClickListener(btn -> {
                 String u = urlIn.getText() != null ? urlIn.getText().toString().trim() : "";
                 String n = nameIn.getText() != null ? nameIn.getText().toString().trim() : "";
                 if (u.isEmpty()) {
-                    Toast.makeText(act, "Enter URL or ID", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(act, R.string.toast_enter_url, Toast.LENGTH_SHORT).show();
                     return;
                 }
                 if (n.isEmpty()) n = u;
@@ -347,9 +402,31 @@ public class MainActivity extends AppCompatActivity {
                 act.groupNames.add(n);
                 act.saveGroups();
                 adapter.notifyDataSetChanged();
-                count.setText(act.groupUrls.size() + " groups saved");
+                count.setText(getString(R.string.groups_count, act.groupUrls.size()));
                 urlIn.setText("");
                 nameIn.setText("");
+            });
+
+            v.findViewById(R.id.btnImportGroups).setOnClickListener(btn -> {
+                String raw = importIn.getText() != null ? importIn.getText().toString() : "";
+                if (raw.trim().isEmpty()) {
+                    Toast.makeText(act, R.string.toast_enter_url, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                String[] lines = raw.split("\n");
+                int added = 0;
+                for (String line : lines) {
+                    String u = line.trim();
+                    if (u.isEmpty()) continue;
+                    act.groupUrls.add(u);
+                    act.groupNames.add(u);
+                    added++;
+                }
+                act.saveGroups();
+                adapter.notifyDataSetChanged();
+                count.setText(getString(R.string.groups_count, act.groupUrls.size()));
+                importIn.setText("");
+                Toast.makeText(act, "تمت إضافة " + added + " مجموعة", Toast.LENGTH_SHORT).show();
             });
 
             v.findViewById(R.id.btnClearGroups).setOnClickListener(btn -> {
@@ -357,7 +434,8 @@ public class MainActivity extends AppCompatActivity {
                 act.groupNames.clear();
                 act.saveGroups();
                 adapter.notifyDataSetChanged();
-                count.setText("0 groups saved");
+                count.setText(getString(R.string.groups_count, 0));
+                Toast.makeText(act, R.string.toast_groups_cleared, Toast.LENGTH_SHORT).show();
             });
 
             list.setOnItemLongClickListener((parent, view, position, id) -> {
@@ -365,7 +443,7 @@ public class MainActivity extends AppCompatActivity {
                 act.groupNames.remove(position);
                 act.saveGroups();
                 adapter.notifyDataSetChanged();
-                count.setText(act.groupUrls.size() + " groups saved");
+                count.setText(getString(R.string.groups_count, act.groupUrls.size()));
                 return true;
             });
             return v;
@@ -389,9 +467,9 @@ public class MainActivity extends AppCompatActivity {
             textIn.setText(act.postText);
             minIn.setText(String.valueOf(act.minDelaySec));
             maxIn.setText(String.valueOf(act.maxDelaySec));
-            info.setText(act.groupUrls.size() + " groups selected • " +
-                    (act.isRunning ? "Running" : "Ready"));
-            log.setText(act.isRunning ? "Campaign in progress…" : "Waiting…");
+            String state = act.isRunning ? getString(R.string.running) : getString(R.string.ready);
+            info.setText(getString(R.string.campaign_info, act.groupUrls.size(), state));
+            log.setText(act.isRunning ? act.lastLog : getString(R.string.waiting));
             startBtn.setVisibility(act.isRunning ? View.GONE : View.VISIBLE);
             stopBtn.setVisibility(act.isRunning ? View.VISIBLE : View.GONE);
 
@@ -403,16 +481,16 @@ public class MainActivity extends AppCompatActivity {
                 act.startCampaign(t, minD, maxD);
                 startBtn.setVisibility(View.GONE);
                 stopBtn.setVisibility(View.VISIBLE);
-                info.setText(act.groupUrls.size() + " groups • Running");
-                log.setText("Started…");
+                info.setText(getString(R.string.campaign_info, act.groupUrls.size(), getString(R.string.running)));
+                log.setText(act.lastLog);
             });
 
             stopBtn.setOnClickListener(btn -> {
                 act.stopCampaign();
                 startBtn.setVisibility(View.VISIBLE);
                 stopBtn.setVisibility(View.GONE);
-                info.setText(act.groupUrls.size() + " groups • Stopped");
-                log.setText("Stopped by user");
+                info.setText(getString(R.string.campaign_info, act.groupUrls.size(), getString(R.string.stopped)));
+                log.setText(act.lastLog);
             });
             return v;
         }
@@ -436,9 +514,9 @@ public class MainActivity extends AppCompatActivity {
                             .putInt("min_delay", act.minDelaySec)
                             .putInt("max_delay", act.maxDelaySec)
                             .apply();
-                    Toast.makeText(act, "Settings saved", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(act, R.string.toast_settings_saved, Toast.LENGTH_SHORT).show();
                 } catch (Exception e) {
-                    Toast.makeText(act, "Invalid number", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(act, "رقم غير صالح", Toast.LENGTH_SHORT).show();
                 }
             });
 
@@ -448,7 +526,9 @@ public class MainActivity extends AppCompatActivity {
                 act.groupNames.clear();
                 act.postText = "";
                 act.postedCount = 0;
-                Toast.makeText(act, "All local data cleared", Toast.LENGTH_SHORT).show();
+                act.failedCount = 0;
+                act.lastLog = "";
+                Toast.makeText(act, R.string.toast_data_cleared, Toast.LENGTH_SHORT).show();
             });
             return v;
         }
