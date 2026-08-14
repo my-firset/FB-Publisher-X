@@ -31,6 +31,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "FBPublisherX";
     private static final String DASHBOARD_URL = "file:///android_asset/dashboard/index.html";
     private static final String FB_HOME = "https://m.facebook.com";
+    private static final String FB_GROUPS = "https://m.facebook.com/groups/?category=memberships";
     private static final String MOBILE_UA =
             "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 " +
             "(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36";
@@ -81,37 +82,30 @@ public class MainActivity extends AppCompatActivity {
             currentTab = id;
 
             if (id == R.id.nav_home) {
-                // Dashboard HTML
                 isPosting = false;
                 webView.loadUrl(DASHBOARD_URL);
                 return true;
             }
             if (id == R.id.nav_facebook) {
-                // Facebook login / session
                 webView.loadUrl(FB_HOME);
                 return true;
             }
             if (id == R.id.nav_queue) {
-                // Reuse dashboard, jump to groups/queue feel via dashboard
                 webView.loadUrl(DASHBOARD_URL);
-                mainHandler.postDelayed(() -> {
-                    webView.evaluateJavascript(
-                            "document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));" +
-                            "document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));" +
-                            "var t=document.querySelector('[data-tab=groups]'); if(t){t.classList.add('active');}" +
-                            "var p=document.getElementById('panel-groups'); if(p) p.classList.add('active');", null);
-                }, 400);
+                mainHandler.postDelayed(() -> webView.evaluateJavascript(
+                        "document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));" +
+                        "document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));" +
+                        "var t=document.querySelector('[data-tab=groups]'); if(t){t.classList.add('active');}" +
+                        "var p=document.getElementById('panel-groups'); if(p) p.classList.add('active');", null), 400);
                 return true;
             }
             if (id == R.id.nav_settings) {
                 webView.loadUrl(DASHBOARD_URL);
-                mainHandler.postDelayed(() -> {
-                    webView.evaluateJavascript(
-                            "document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));" +
-                            "document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));" +
-                            "var t=document.querySelector('[data-tab=settings]'); if(t){t.classList.add('active');}" +
-                            "var p=document.getElementById('panel-settings'); if(p) p.classList.add('active');", null);
-                }, 400);
+                mainHandler.postDelayed(() -> webView.evaluateJavascript(
+                        "document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));" +
+                        "document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));" +
+                        "var t=document.querySelector('[data-tab=accounts]'); if(t){t.classList.add('active');}" +
+                        "var p=document.getElementById('panel-accounts'); if(p) p.classList.add('active');", null), 400);
                 return true;
             }
             return false;
@@ -229,11 +223,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void executePostOnPage(String text) {
-        String safe = text
-                .replace("\\", "\\\\")
-                .replace("'", "\\'")
-                .replace("\n", "\\n")
-                .replace("\r", "");
+        String safe = text.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n").replace("\r", "");
         webView.evaluateJavascript("window.FBX_postText && window.FBX_postText('" + safe + "');", null);
     }
 
@@ -308,12 +298,25 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @JavascriptInterface
+        public void openMyGroups() {
+            mainHandler.post(() -> {
+                bottomNav.setSelectedItemId(R.id.nav_facebook);
+                webView.loadUrl(FB_GROUPS);
+                Toast.makeText(MainActivity.this,
+                        "افتح مجموعة وانسخ رابطها ثم ارجع للوحة لإضافته",
+                        Toast.LENGTH_LONG).show();
+            });
+        }
+
+        @JavascriptInterface
         public void detectSession() {
             mainHandler.post(() -> {
                 String cookies = CookieManager.getInstance().getCookie("https://m.facebook.com");
                 boolean ok = cookies != null && (cookies.contains("c_user=") || cookies.contains("xs="));
                 webView.evaluateJavascript("window.setSessionStatus && window.setSessionStatus(" + ok + ");", null);
-                Toast.makeText(MainActivity.this, ok ? "الجلسة نشطة" : "غير مسجل الدخول", Toast.LENGTH_SHORT).show();
+                if (!showingDashboard) {
+                    Toast.makeText(MainActivity.this, ok ? "الجلسة نشطة" : "غير مسجل الدخول", Toast.LENGTH_SHORT).show();
+                }
             });
         }
 
