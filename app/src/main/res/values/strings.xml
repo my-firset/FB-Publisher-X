@@ -36,6 +36,8 @@
     <string name="account_saved">تم الحفظ: %1$s</string>
     <string name="session_active">الجلسة: نشطة ✓</string>
     <string name="session_inactive">الجلسة: غير نشطة</string>
+    <string name="profile_id">معرف الحساب (c_user): %1$s</string>
+    <string name="profile_id_none">معرف الحساب: غير متوفر</string>
     <string name="login_title">تسجيل الدخول إلى فيسبوك</string>
     <string name="toast_login_ok">تم استخراج الجلسة بنجاح</string>
     <string name="toast_login_empty">لم يتم العثور على كوكيز — تأكد من تسجيل الدخول</string>
@@ -62,7 +64,14 @@
     <!-- Campaign -->
     <string name="campaign_title">إنشاء الحملة</string>
     <string name="post_text_label">نص المنشور</string>
-    <string name="hint_post_text">اكتب محتوى المنشور هنا…</string>
+    <string name="hint_post_text">اكتب المحتوى… يمكن استخدام SpinTax مثل: {أهلاً|مرحباً|السلام عليكم}</string>
+    <string name="spintax_help">تنويع النصوص (SpinTax): ضع الخيارات بين أقواس مع فاصل | مثل {خيار1|خيار2|خيار3}. يتم توليد نسخة فريدة لكل مجموعة تلقائياً.</string>
+    <string name="btn_spintax_info">ما هو SpinTax؟</string>
+    <string name="media_label">إرفاق وسائط (صور/فيديو)</string>
+    <string name="btn_pick_media">اختيار من المعرض</string>
+    <string name="btn_clear_media">مسح الوسائط</string>
+    <string name="media_count">%1$d ملف مرفق</string>
+    <string name="media_note">ملاحظة: إرفاق الوسائط جاهز في الواجهة. رفع الملفات فعلياً عبر الأتمتة محدود بسبب قيود فيسبوك وWebView.</string>
     <string name="hint_min_delay">الحد الأدنى (من 5 ث)</string>
     <string name="hint_max_delay">الحد الأقصى</string>
     <string name="campaign_info">%1$d مجموعة • %2$s</string>
@@ -90,5 +99,5 @@
     <string name="btn_clear_data">مسح كل البيانات المحلية</string>
     <string name="toast_settings_saved">تم حفظ الإعدادات</string>
     <string name="toast_data_cleared">تم مسح كل البيانات</string>
-    <string name="app_version">Publisher X v1.3 — محرك سريع + صفحة حساب احترافية</string>
+    <string name="app_version">Publisher X v1.4 — SpinTax + Profile + Media UI</string>
 </resources>
