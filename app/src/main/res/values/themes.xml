@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.FBPublisherX" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">#1877F2</item>
+        <item name="colorPrimaryVariant">#0D65D9</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="android:statusBarColor">#1877F2</item>
+        <item name="android:navigationBarColor">#000000</item>
+        <item name="android:windowBackground">#FFFFFF</item>
+    </style>
+</resources>
