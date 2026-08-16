@@ -9,7 +9,7 @@
 
     <!-- Dashboard -->
     <string name="dash_title">Publisher X</string>
-    <string name="dash_subtitle">لوحة تحكم الحملات التسويقية</string>
+    <string name="dash_subtitle">لوحة تحكم احترافية للحملات التسويقية</string>
     <string name="stat_groups">المجموعات</string>
     <string name="stat_posted">منشورات ناجحة</string>
     <string name="stat_failed">فاشلة</string>
@@ -79,7 +79,7 @@
     <string name="btn_pick_media">اختيار من المعرض</string>
     <string name="btn_clear_media">مسح الوسائط</string>
     <string name="media_count">%1$d ملف مرفق</string>
-    <string name="media_note">ملاحظة: إرفاق الوسائط جاهز في الواجهة. رفع الملفات فعلياً عبر الأتمتة محدود بسبب قيود فيسبوك وWebView.</string>
+    <string name="media_note">ملاحظة احترافية: إرفاق الوسائط متاح في الواجهة. رفع الملفات الفعلي عبر WebView محدود تقنياً بسبب قيود فيسبوك. المحرك الحالي محسّن للنشر النصي الموثوق.</string>
     <string name="hint_min_delay">الحد الأدنى (من 5 ث)</string>
     <string name="hint_max_delay">الحد الأقصى</string>
     <string name="campaign_info">%1$d مجموعة • %2$s</string>
@@ -107,5 +107,5 @@
     <string name="btn_clear_data">مسح كل البيانات المحلية</string>
     <string name="toast_settings_saved">تم حفظ الإعدادات</string>
     <string name="toast_data_cleared">تم مسح كل البيانات</string>
-    <string name="app_version">Publisher X v1.5 — Smart Link Extractor + SpinTax + Profile</string>
+    <string name="app_version">Publisher X v1.7 — Professional UI + Bulletproof Text Engine</string>
 </resources>
