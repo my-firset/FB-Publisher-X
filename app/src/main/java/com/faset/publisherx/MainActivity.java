@@ -59,7 +59,7 @@ import java.util.regex.Pattern;
 
 /**
  * Publisher X — Independent Native Marketing Dashboard (Arabic)
- * v1.6: Stabilized text-only posting engine (DOM settle + fallback selectors + retry).
+ * v1.7: Professional UI polish + bulletproof text engine with page-state validation.
  * No Facebook scraping / automated data collection.
  */
 public class MainActivity extends AppCompatActivity {
@@ -67,11 +67,11 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "PublisherX";
     private static final String PREFS = "publisherx_prefs";
     /** Overall timeout per group (settle + retries + post click). */
-    private static final long PAGE_TIMEOUT_MS = 20000L;
+    private static final long PAGE_TIMEOUT_MS = 22000L;
     private static final int REST_AFTER_SUCCESS = 15;
     private static final long REST_DURATION_MS = 5 * 60 * 1000L;
     /** Wait after onPageFinished before first inject attempt (ms). */
-    private static final long DOM_SETTLE_MS = 4000L;
+    private static final long DOM_SETTLE_MS = 4500L;
 
     /** Matches facebook.com/groups/ID or name (www/m/mobile optional, http/https optional). */
     private static final Pattern GROUP_URL_PATTERN = Pattern.compile(
@@ -471,9 +471,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Robust text-only inject + post for m.facebook.com group pages.
-     * - Expanded fallback selectors for the composer
-     * - Short internal retry loop if composer not yet present
+     * Bulletproof text-only inject + post for m.facebook.com group pages.
+     * - Page-state validation (login wall / join required) before composer search
+     * - Expanded fallback selectors + visibility checks
+     * - Internal retry loop
      * - Proper focus + input/change events + safe button click
      */
     private void injectAndPost(String text) {
@@ -487,8 +488,8 @@ public class MainActivity extends AppCompatActivity {
 
         String js =
             "(function(){" +
-            "  var MAX_TRIES = 4;" +
-            "  var TRY_GAP = 1200;" +
+            "  var MAX_TRIES = 5;" +
+            "  var TRY_GAP = 1100;" +
             "  var text = '" + safe + "';" +
             "  var sels = [" +
             "    'textarea[name=\"xc_message\"]'," +
@@ -503,6 +504,16 @@ public class MainActivity extends AppCompatActivity {
             "    'div[aria-label*=\"اكتب\"]'," +
             "    'div[aria-label*=\"Write something\"]'" +
             "  ];" +
+            "  function pageState(){" +
+            "    var body=(document.body&&document.body.innerText||'').toLowerCase();" +
+            "    var html=(document.documentElement&&document.documentElement.innerHTML||'').toLowerCase();" +
+            "    if(body.indexOf('log in')>=0||body.indexOf('تسجيل الدخول')>=0||html.indexOf('login_form')>=0||html.indexOf('name=\"email\"')>=0) return 'login_required';" +
+            "    if((body.indexOf('join group')>=0||body.indexOf('انضم إلى المجموعة')>=0||body.indexOf('انضم')>=0) && body.indexOf('leave')<0){" +
+            "      var joinBtns=document.querySelectorAll('button,div[role=button],a[role=button]');" +
+            "      for(var i=0;i<joinBtns.length;i++){ var t=((joinBtns[i].innerText||'')+'').toLowerCase(); if(t.indexOf('join')>=0||t.indexOf('انضم')>=0) return 'not_member'; }" +
+            "    }" +
+            "    return 'ok';" +
+            "  }" +
             "  function findBox(){" +
             "    for(var i=0;i<sels.length;i++){" +
             "      var n=document.querySelector(sels[i]);" +
@@ -550,6 +561,9 @@ public class MainActivity extends AppCompatActivity {
             "  }" +
             "  function attempt(tryNo){" +
             "    try{" +
+            "      var state=pageState();" +
+            "      if(state==='login_required'){ AndroidBridge.onResult(false,'login_required'); return; }" +
+            "      if(state==='not_member'){ AndroidBridge.onResult(false,'not_member'); return; }" +
             "      var box=findBox();" +
             "      if(!box){" +
             "        if(tryNo < MAX_TRIES){ setTimeout(function(){ attempt(tryNo+1); }, TRY_GAP); return; }" +
@@ -560,7 +574,7 @@ public class MainActivity extends AppCompatActivity {
             "        var btn=findPostBtn();" +
             "        if(btn){ clickBtn(btn); AndroidBridge.onResult(true,'ok'); }" +
             "        else { AndroidBridge.onResult(false,'no_button'); }" +
-            "      }, 1600);" +
+            "      }, 1700);" +
             "    }catch(e){ AndroidBridge.onResult(false, String(e)); }" +
             "  }" +
             "  attempt(1);" +
@@ -617,7 +631,12 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     failedCount++;
                     prefs.edit().putInt("failed_count", failedCount).apply();
-                    addLog("✗ فشل " + (currentIndex + 1) + " (" + msg + ")");
+                    String reason = msg;
+                    if ("login_required".equals(msg)) reason = "يتطلب تسجيل دخول";
+                    else if ("not_member".equals(msg)) reason = "لست عضواً في المجموعة";
+                    else if ("no_composer".equals(msg)) reason = "لا يوجد مربع كتابة";
+                    else if ("no_button".equals(msg)) reason = "لا يوجد زر نشر";
+                    addLog("✗ فشل " + (currentIndex + 1) + " (" + reason + ")");
                 }
                 scheduleNext();
             });
