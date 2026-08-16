@@ -59,16 +59,19 @@ import java.util.regex.Pattern;
 
 /**
  * Publisher X — Independent Native Marketing Dashboard (Arabic)
- * Phase 7: Smart Link Extractor (local regex, 100% ToS-safe), SpinTax, profile, media UI.
+ * v1.6: Stabilized text-only posting engine (DOM settle + fallback selectors + retry).
  * No Facebook scraping / automated data collection.
  */
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "PublisherX";
     private static final String PREFS = "publisherx_prefs";
-    private static final long PAGE_TIMEOUT_MS = 10000L;
+    /** Overall timeout per group (settle + retries + post click). */
+    private static final long PAGE_TIMEOUT_MS = 20000L;
     private static final int REST_AFTER_SUCCESS = 15;
     private static final long REST_DURATION_MS = 5 * 60 * 1000L;
+    /** Wait after onPageFinished before first inject attempt (ms). */
+    private static final long DOM_SETTLE_MS = 4000L;
 
     /** Matches facebook.com/groups/ID or name (www/m/mobile optional, http/https optional). */
     private static final Pattern GROUP_URL_PATTERN = Pattern.compile(
@@ -228,7 +231,6 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        // Also catch bare numeric IDs that look like group IDs
         Matcher bare = BARE_ID_PATTERN.matcher(raw);
         while (bare.find()) {
             String id = bare.group(1);
@@ -275,13 +277,14 @@ public class MainActivity extends AppCompatActivity {
             public void onPageFinished(WebView view, String url) {
                 if (isRunning && currentIndex >= 0 && currentIndex < groupUrls.size()) {
                     cancelTimeout();
-                    handler.postDelayed(() -> injectAndPost(spinText(postText)), 2000);
+                    // Longer settle so mobile group composer is fully rendered
+                    handler.postDelayed(() -> injectAndPost(spinText(postText)), DOM_SETTLE_MS);
                     timeoutRunnable = () -> {
                         if (isRunning && currentIndex >= 0) {
                             Log.w(TAG, "Timeout for group index " + currentIndex);
                             failedCount++;
                             prefs.edit().putInt("failed_count", failedCount).apply();
-                            addLog("✗ فشل (مهلة 10ث) " + (currentIndex + 1) + "/" + groupUrls.size());
+                            addLog("✗ فشل (مهلة) " + (currentIndex + 1) + "/" + groupUrls.size());
                             scheduleNext();
                         }
                     };
@@ -458,37 +461,111 @@ public class MainActivity extends AppCompatActivity {
         if (!url.startsWith("http")) {
             url = "https://m.facebook.com/groups/" + url;
         }
+        // Prefer mobile group composer path
+        if (url.contains("www.facebook.com/groups/")) {
+            url = url.replace("www.facebook.com/groups/", "m.facebook.com/groups/");
+        }
         addLog("جاري: " + (currentIndex + 1) + "/" + groupUrls.size() + " — " + groupNames.get(currentIndex));
         Log.i(TAG, "Background load: " + url);
         hiddenWebView.loadUrl(url);
     }
 
+    /**
+     * Robust text-only inject + post for m.facebook.com group pages.
+     * - Expanded fallback selectors for the composer
+     * - Short internal retry loop if composer not yet present
+     * - Proper focus + input/change events + safe button click
+     */
     private void injectAndPost(String text) {
         if (!isRunning) return;
-        String safe = text.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n").replace("\"", "\\\"");
+        String safe = text
+                .replace("\\", "\\\\")
+                .replace("'", "\\'")
+                .replace("\n", "\\n")
+                .replace("\r", "")
+                .replace("\"", "\\\"");
+
         String js =
             "(function(){" +
-            "  try {" +
-            "    var sels=['div[contenteditable=true]','div[role=textbox]','textarea'];" +
-            "    var box=null;" +
-            "    for(var i=0;i<sels.length;i++){box=document.querySelector(sels[i]);if(box)break;}" +
-            "    if(!box){AndroidBridge.onResult(false,'no_composer');return;}" +
-            "    box.focus();" +
-            "    if(box.tagName==='TEXTAREA'||box.tagName==='INPUT'){box.value='" + safe + "';}" +
-            "    else{box.innerText='" + safe + "';}" +
-            "    box.dispatchEvent(new Event('input',{bubbles:true}));" +
-            "    setTimeout(function(){" +
-            "      var btn=null;" +
-            "      var all=document.querySelectorAll('button,div[role=button]');" +
-            "      for(var j=0;j<all.length;j++){" +
-            "        var t=(all[j].innerText||'').trim().toLowerCase();" +
-            "        if(t==='post'||t==='نشر'||t==='share'||t==='مشاركة'||t.indexOf('نشر')>=0){btn=all[j];break;}" +
+            "  var MAX_TRIES = 4;" +
+            "  var TRY_GAP = 1200;" +
+            "  var text = '" + safe + "';" +
+            "  var sels = [" +
+            "    'textarea[name=\"xc_message\"]'," +
+            "    'textarea[name=\"message\"]'," +
+            "    'form textarea'," +
+            "    'div[contenteditable=true]'," +
+            "    'div[role=textbox]'," +
+            "    '[contenteditable=true]'," +
+            "    'textarea'," +
+            "    'div[data-testid*=\"composer\"] [contenteditable]'," +
+            "    'div[aria-label*=\"Write\"]'," +
+            "    'div[aria-label*=\"اكتب\"]'," +
+            "    'div[aria-label*=\"Write something\"]'" +
+            "  ];" +
+            "  function findBox(){" +
+            "    for(var i=0;i<sels.length;i++){" +
+            "      var n=document.querySelector(sels[i]);" +
+            "      if(n && n.offsetParent !== null) return n;" +
+            "    }" +
+            "    var all=document.querySelectorAll('div[contenteditable],textarea,[role=textbox]');" +
+            "    for(var k=0;k<all.length;k++){ if(all[k].offsetParent!==null) return all[k]; }" +
+            "    return null;" +
+            "  }" +
+            "  function setText(box, val){" +
+            "    try{ box.focus(); }catch(e){} " +
+            "    var tag=(box.tagName||'').toUpperCase();" +
+            "    if(tag==='TEXTAREA' || tag==='INPUT'){" +
+            "      box.value = val;" +
+            "    } else {" +
+            "      box.innerText = val;" +
+            "      try{ box.textContent = val; }catch(e){} " +
+            "    }" +
+            "    try{" +
+            "      box.dispatchEvent(new Event('input',{bubbles:true}));" +
+            "      box.dispatchEvent(new Event('change',{bubbles:true}));" +
+            "      box.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true}));" +
+            "    }catch(e){} " +
+            "  }" +
+            "  function findPostBtn(){" +
+            "    var all=document.querySelectorAll('button,div[role=button],input[type=submit],a[role=button]');" +
+            "    for(var j=0;j<all.length;j++){" +
+            "      var el=all[j];" +
+            "      var t=((el.innerText||el.value||el.getAttribute('aria-label')||'')+'').trim().toLowerCase();" +
+            "      if(!t) continue;" +
+            "      if(t==='post'||t==='نشر'||t==='share'||t==='مشاركة'||t.indexOf('نشر')>=0||t.indexOf('post')>=0){" +
+            "        if(el.offsetParent!==null) return el;" +
             "      }" +
-            "      if(btn){btn.click();AndroidBridge.onResult(true,'ok');}" +
-            "      else{AndroidBridge.onResult(false,'no_button');}" +
-            "    },1500);" +
-            "  }catch(e){AndroidBridge.onResult(false,String(e));}" +
+            "    }" +
+            "    return null;" +
+            "  }" +
+            "  function clickBtn(btn){" +
+            "    try{ btn.focus(); }catch(e){} " +
+            "    try{" +
+            "      btn.dispatchEvent(new MouseEvent('mousedown',{bubbles:true}));" +
+            "      btn.dispatchEvent(new MouseEvent('mouseup',{bubbles:true}));" +
+            "      btn.dispatchEvent(new MouseEvent('click',{bubbles:true}));" +
+            "      if(typeof btn.click==='function') btn.click();" +
+            "    }catch(e){ try{ btn.click(); }catch(e2){} }" +
+            "  }" +
+            "  function attempt(tryNo){" +
+            "    try{" +
+            "      var box=findBox();" +
+            "      if(!box){" +
+            "        if(tryNo < MAX_TRIES){ setTimeout(function(){ attempt(tryNo+1); }, TRY_GAP); return; }" +
+            "        AndroidBridge.onResult(false,'no_composer'); return;" +
+            "      }" +
+            "      setText(box, text);" +
+            "      setTimeout(function(){" +
+            "        var btn=findPostBtn();" +
+            "        if(btn){ clickBtn(btn); AndroidBridge.onResult(true,'ok'); }" +
+            "        else { AndroidBridge.onResult(false,'no_button'); }" +
+            "      }, 1600);" +
+            "    }catch(e){ AndroidBridge.onResult(false, String(e)); }" +
+            "  }" +
+            "  attempt(1);" +
             "})();";
+
         hiddenWebView.evaluateJavascript(js, null);
     }
 
@@ -789,10 +866,8 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(act, R.string.toast_enter_url, Toast.LENGTH_SHORT).show();
                     return;
                 }
-                // Prefer smart extraction even for the simple import field
                 List<String> found = extractGroupLinks(raw);
                 if (found.isEmpty()) {
-                    // Fallback: treat each non-empty line as a URL
                     String[] lines = raw.split("\n");
                     for (String line : lines) {
                         String u = line.trim();
