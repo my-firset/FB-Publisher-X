@@ -39,5 +39,18 @@
             android:ellipsize="end"
             android:layout_marginTop="4dp" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnOpenGroupManual"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="8dp"
+            android:text="@string/btn_open_group_manual"
+            android:textAllCaps="false"
+            app:cornerRadius="10dp"
+            app:backgroundTint="@color/secondary"
+            app:icon="@android:drawable/ic_menu_share"
+            app:iconGravity="textStart"
+            app:iconPadding="8dp" />
+
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

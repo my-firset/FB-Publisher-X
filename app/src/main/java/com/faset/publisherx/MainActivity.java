@@ -351,6 +351,46 @@ public class MainActivity extends AppCompatActivity {
         dialog.show();
     }
 
+    @SuppressLint("SetJavaScriptEnabled")
+    public void openGroupForManualPosting(String groupUrl) {
+        if (groupUrl == null || groupUrl.trim().isEmpty()) return;
+        if (postText != null && !postText.trim().isEmpty()) {
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            if (clipboard != null) clipboard.setPrimaryClip(ClipData.newPlainText("campaign_text", postText));
+        }
+
+        Dialog dialog = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        FrameLayout root = new FrameLayout(this);
+        WebView groupWeb = new WebView(this);
+        WebSettings settings = groupWeb.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setUserAgentString("Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36");
+        CookieManager.getInstance().setAcceptCookie(true);
+        CookieManager.getInstance().setAcceptThirdPartyCookies(groupWeb, true);
+        groupWeb.setWebViewClient(new WebViewClient());
+        groupWeb.loadUrl(groupUrl.trim());
+
+        MaterialButton closeButton = new MaterialButton(this);
+        closeButton.setText(R.string.btn_close_manual_browser);
+        closeButton.setAllCaps(false);
+        FrameLayout.LayoutParams closeLp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        closeLp.gravity = android.view.Gravity.BOTTOM;
+        closeLp.setMargins(24, 24, 24, 48);
+        closeButton.setLayoutParams(closeLp);
+        root.addView(groupWeb, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        root.addView(closeButton);
+        dialog.setContentView(root);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT);
+        }
+        closeButton.setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
+        Toast.makeText(this, R.string.group_manual_share_hint, Toast.LENGTH_LONG).show();
+    }
+
     public void savePageConnection(String id, String token) {
         pageId = id == null ? "" : id.trim();
         pageAccessToken = token == null ? "" : token.trim();
@@ -575,15 +615,21 @@ public class MainActivity extends AppCompatActivity {
         private final List<String> names;
         private final List<String> urls;
         private final OnLongClickListener longClickListener;
+        private final OnOpenListener openListener;
 
         public interface OnLongClickListener {
             void onLongClick(int position);
         }
 
-        public GroupsAdapter(List<String> names, List<String> urls, OnLongClickListener listener) {
+        public interface OnOpenListener {
+            void onOpen(int position);
+        }
+
+        public GroupsAdapter(List<String> names, List<String> urls, OnLongClickListener listener, OnOpenListener openListener) {
             this.names = names;
             this.urls = urls;
             this.longClickListener = listener;
+            this.openListener = openListener;
         }
 
         @NonNull
@@ -598,6 +644,10 @@ public class MainActivity extends AppCompatActivity {
         public void onBindViewHolder(@NonNull VH h, int position) {
             h.name.setText(names.get(position));
             h.url.setText(urls.get(position));
+            h.openButton.setOnClickListener(v -> {
+                int adapterPosition = h.getBindingAdapterPosition();
+                if (openListener != null && adapterPosition != RecyclerView.NO_POSITION) openListener.onOpen(adapterPosition);
+            });
             h.itemView.setOnLongClickListener(v -> {
                 if (longClickListener != null) {
                     longClickListener.onLongClick(h.getAdapterPosition());
@@ -613,10 +663,12 @@ public class MainActivity extends AppCompatActivity {
 
         static class VH extends RecyclerView.ViewHolder {
             final TextView name, url;
+            final MaterialButton openButton;
             VH(View v) {
                 super(v);
                 name = v.findViewById(R.id.itemGroupName);
                 url = v.findViewById(R.id.itemGroupUrl);
+                openButton = v.findViewById(R.id.btnOpenGroupManual);
             }
         }
     }
@@ -783,6 +835,10 @@ public class MainActivity extends AppCompatActivity {
                     act.saveGroups();
                     adapter.notifyItemRemoved(position);
                     count.setText(getString(R.string.groups_count, act.groupUrls.size()));
+                }
+            }, position -> {
+                if (position >= 0 && position < act.groupUrls.size()) {
+                    act.openGroupForManualPosting(act.groupUrls.get(position));
                 }
             });
             recycler.setAdapter(adapter);

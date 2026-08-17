@@ -61,7 +61,10 @@
     <string name="page_api_error">تعذر التحقق: %1$s</string>
 
     <!-- Groups -->
-    <string name="groups_api_warning">هذه الشاشة تحفظ روابط المجموعات فقط. النشر المؤكد المتاح حالياً هو على صفحة فيسبوك عبر Meta Pages API، وليس عبر نقرات WebView داخل المجموعات.</string>
+    <string name="groups_api_warning">المجموعات: افتح المجموعة وسجّل المنشور يدوياً من داخل فيسبوك. لا يستخدم التطبيق نقرات آلية أو إضافات تتجاوز سياسات Meta.</string>
+    <string name="btn_open_group_manual">فتح المجموعة للمشاركة اليدوية</string>
+    <string name="btn_close_manual_browser">إغلاق المتصفح</string>
+    <string name="group_manual_share_hint">تم نسخ نص الحملة. الصق المحتوى وأضف الوسائط ثم اضغط نشر بنفسك داخل فيسبوك.</string>
     <string name="groups_title">قائمة المجموعات</string>
     <string name="hint_group_url">رابط المجموعة أو المعرف (عام أو خاص)</string>
     <string name="hint_group_name">الاسم المعروض (اختياري)</string>
