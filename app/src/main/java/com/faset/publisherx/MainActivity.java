@@ -22,6 +22,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
@@ -398,15 +399,23 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Publishes exactly one text post through Meta's Pages API and counts success
-     * only when Meta returns a non-empty post ID. No DOM click is treated as success.
+     * Publishes text or selected media through Meta's official Pages API and
+     * counts success only when Meta returns a non-empty object ID.
      */
     public void startPageCampaign(String text) {
+        startPageCampaign(text, mediaUris);
+    }
+
+    public void startPageCampaign(String text, List<Uri> selectedMedia) {
         if (isRunning) {
             Toast.makeText(this, R.string.toast_already_running, Toast.LENGTH_SHORT).show();
             return;
         }
-        if (text == null || text.trim().isEmpty()) {
+        List<Uri> mediaSnapshot = selectedMedia == null
+                ? new ArrayList<>()
+                : new ArrayList<>(selectedMedia);
+        String trimmedText = text == null ? "" : text.trim();
+        if (trimmedText.isEmpty() && mediaSnapshot.isEmpty()) {
             Toast.makeText(this, R.string.toast_enter_text, Toast.LENGTH_SHORT).show();
             return;
         }
@@ -415,23 +424,20 @@ public class MainActivity extends AppCompatActivity {
             bottomNav.setSelectedItemId(R.id.nav_accounts);
             return;
         }
-        if (!mediaUris.isEmpty()) {
-            Toast.makeText(this, R.string.toast_media_not_supported, Toast.LENGTH_LONG).show();
-            return;
-        }
 
-        postText = text.trim();
+        postText = trimmedText;
         prefs.edit().putString("post_text", postText).apply();
         isRunning = true;
         currentIndex = 0;
-        addLog("بدء نشر فعلي عبر Meta Pages API…");
+        String mode = mediaSnapshot.isEmpty() ? "نصي" : "متعدد الوسائط";
+        addLog("بدء نشر فعلي " + mode + " عبر Meta Pages API…");
         Toast.makeText(this, R.string.toast_started, Toast.LENGTH_SHORT).show();
         notifyProgress();
 
         final String message = spinText(postText);
         publishTask = networkExecutor.submit(() -> {
-            FacebookPagesClient.PublishResult result = FacebookPagesClient.publishTextPost(
-                    pageId, pageAccessToken, message, GRAPH_API_VERSION);
+            FacebookPagesClient.PublishResult result = FacebookPagesClient.publishPost(
+                    pageId, pageAccessToken, message, mediaSnapshot, getContentResolver(), GRAPH_API_VERSION);
             handler.post(() -> finishPagePublish(result));
         });
     }
@@ -467,13 +473,13 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "أوقف النشر أولاً", Toast.LENGTH_SHORT).show();
             return;
         }
-        if (postText == null || postText.trim().isEmpty()) {
+        if ((postText == null || postText.trim().isEmpty()) && mediaUris.isEmpty()) {
             Toast.makeText(this, R.string.toast_enter_text, Toast.LENGTH_SHORT).show();
             return;
         }
         addLog("إعادة محاولة النشر الحقيقي عبر Meta API");
         Toast.makeText(this, R.string.toast_retry, Toast.LENGTH_SHORT).show();
-        startPageCampaign(postText);
+        startPageCampaign(postText, mediaUris);
     }
 
     private void notifyProgress() {
@@ -482,6 +488,63 @@ public class MainActivity extends AppCompatActivity {
                 try { r.run(); } catch (Exception ignored) {}
             }
         });
+    }
+
+    private void renderMediaPreview(TextView mediaCount, TextView previewTitle, LinearLayout previewList) {
+        if (mediaCount == null || previewTitle == null || previewList == null) return;
+        mediaCount.setText(getString(R.string.media_count, mediaUris.size()));
+        previewList.removeAllViews();
+        if (mediaUris.isEmpty()) {
+            previewTitle.setText(R.string.media_preview_empty);
+            return;
+        }
+        previewTitle.setText(getString(R.string.media_preview_title) + " (" + mediaUris.size() + ")");
+        float density = getResources().getDisplayMetrics().density;
+        int thumbSize = (int) (72 * density);
+        for (Uri uri : mediaUris) {
+            String mime = getContentResolver().getType(uri);
+            boolean video = mime != null && mime.toLowerCase(Locale.ROOT).startsWith("video/");
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            row.setPadding(0, 6, 0, 6);
+
+            if (video) {
+                TextView videoBadge = new TextView(this);
+                videoBadge.setText("▶");
+                videoBadge.setTextColor(0xFFFFFFFF);
+                videoBadge.setTextSize(20);
+                videoBadge.setGravity(android.view.Gravity.CENTER);
+                videoBadge.setBackgroundColor(0xFF334155);
+                row.addView(videoBadge, new LinearLayout.LayoutParams(thumbSize, thumbSize));
+            } else {
+                ImageView image = new ImageView(this);
+                image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                image.setBackgroundColor(0xFF334155);
+                image.setImageURI(uri);
+                row.addView(image, new LinearLayout.LayoutParams(thumbSize, thumbSize));
+            }
+
+            TextView label = new TextView(this);
+            label.setText(video
+                    ? getString(R.string.media_item_video, mediaDisplayName(uri))
+                    : getString(R.string.media_item_image, mediaDisplayName(uri)));
+            label.setTextColor(0xFFCBD5E1);
+            label.setTextSize(13);
+            label.setMaxLines(2);
+            label.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            LinearLayout.LayoutParams labelLp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            labelLp.setMargins((int) (10 * density), 0, 0, 0);
+            row.addView(label, labelLp);
+            previewList.addView(row);
+        }
+    }
+
+    private String mediaDisplayName(Uri uri) {
+        if (uri == null) return "media";
+        String value = uri.getLastPathSegment();
+        if (value == null || value.trim().isEmpty()) return uri.toString();
+        return value;
     }
 
     public void addProgressListener(Runnable r) {
@@ -941,12 +1004,14 @@ public class MainActivity extends AppCompatActivity {
             MaterialButton stopBtn = v.findViewById(R.id.btnStopCampaign);
             MaterialButton retryBtn = v.findViewById(R.id.btnRetryFailed);
             TextView mediaCount = v.findViewById(R.id.mediaCountText);
+            TextView mediaPreviewTitle = v.findViewById(R.id.mediaPreviewTitle);
+            LinearLayout mediaPreviewList = v.findViewById(R.id.mediaPreviewList);
             TextView spintaxHelp = v.findViewById(R.id.spintaxHelp);
 
             textIn.setText(act.postText);
             minIn.setText(String.valueOf(Math.max(5, act.minDelaySec)));
             maxIn.setText(String.valueOf(Math.max(5, act.maxDelaySec)));
-            mediaCount.setText(getString(R.string.media_count, act.mediaUris.size()));
+            act.renderMediaPreview(mediaCount, mediaPreviewTitle, mediaPreviewList);
 
             ActivityResultLauncher<String[]> pickMedia = registerForActivityResult(
                     new ActivityResultContracts.OpenMultipleDocuments(),
@@ -959,14 +1024,14 @@ public class MainActivity extends AppCompatActivity {
                             } catch (Exception ignored) {}
                             if (!act.mediaUris.contains(u)) act.mediaUris.add(u);
                         }
-                        mediaCount.setText(getString(R.string.media_count, act.mediaUris.size()));
+                        act.renderMediaPreview(mediaCount, mediaPreviewTitle, mediaPreviewList);
                     });
 
             v.findViewById(R.id.btnPickMedia).setOnClickListener(btn ->
                     pickMedia.launch(new String[]{"image/*", "video/*"}));
             v.findViewById(R.id.btnClearMedia).setOnClickListener(btn -> {
                 act.mediaUris.clear();
-                mediaCount.setText(getString(R.string.media_count, 0));
+                act.renderMediaPreview(mediaCount, mediaPreviewTitle, mediaPreviewList);
             });
             v.findViewById(R.id.btnSpintaxInfo).setOnClickListener(btn -> {
                 spintaxHelp.setVisibility(spintaxHelp.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
@@ -992,7 +1057,7 @@ public class MainActivity extends AppCompatActivity {
                 int minD = 5, maxD = 10;
                 try { minD = Integer.parseInt(minIn.getText().toString()); } catch (Exception ignored) {}
                 try { maxD = Integer.parseInt(maxIn.getText().toString()); } catch (Exception ignored) {}
-                act.startPageCampaign(t);
+                act.startPageCampaign(t, new ArrayList<>(act.mediaUris));
             });
 
             stopBtn.setOnClickListener(btn -> act.stopCampaign());
