@@ -11,6 +11,16 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:text="@string/groups_api_warning"
+        android:textColor="@color/warning"
+        android:textSize="12sp"
+        android:background="@color/surface"
+        android:padding="12dp"
+        android:layout_marginBottom="12dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:text="@string/groups_title"
         android:textColor="@color/on_background"
         android:textSize="22sp"

@@ -46,6 +46,7 @@ import com.google.android.material.textfield.TextInputLayout;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -54,6 +55,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -66,27 +70,21 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "PublisherX";
     private static final String PREFS = "publisherx_prefs";
-    /** Overall timeout per group (settle + retries + post click). */
-    private static final long PAGE_TIMEOUT_MS = 22000L;
-    private static final int REST_AFTER_SUCCESS = 15;
-    private static final long REST_DURATION_MS = 5 * 60 * 1000L;
-    /** Wait after onPageFinished before first inject attempt (ms). */
-    private static final long DOM_SETTLE_MS = 4500L;
-
-    /** Matches facebook.com/groups/ID or name (www/m/mobile optional, http/https optional). */
+    /** Meta Graph API version used by the verified Page publishing path. */
+    private static final String GRAPH_API_VERSION = "v26.0";
     private static final Pattern GROUP_URL_PATTERN = Pattern.compile(
             "(?:https?://)?(?:www\\.|m\\.|mobile\\.)?facebook\\.com/groups/([a-zA-Z0-9._-]+)/?",
             Pattern.CASE_INSENSITIVE);
-
-    /** Bare long numeric IDs (typical Facebook group IDs are 10–20 digits). */
     private static final Pattern BARE_ID_PATTERN = Pattern.compile(
             "(?<![a-zA-Z0-9./_-])(\\d{10,20})(?![a-zA-Z0-9])");
 
+    private String lastLog = "";
+    private String pageId = "";
+    private String pageAccessToken = "";
+    private String pageName = "";
     private BottomNavigationView bottomNav;
-    private WebView hiddenWebView;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private SharedPreferences prefs;
-
     private final List<String> groupUrls = new ArrayList<>();
     private final List<String> groupNames = new ArrayList<>();
     private final List<String> activityLogs = new ArrayList<>();
@@ -99,9 +97,8 @@ public class MainActivity extends AppCompatActivity {
     private int postedCount = 0;
     private int failedCount = 0;
     private int successStreak = 0;
-    private String lastLog = "";
-
-    private Runnable timeoutRunnable;
+    private final ExecutorService networkExecutor = Executors.newSingleThreadExecutor();
+    private Future<?> publishTask;
     private final List<Runnable> progressListeners = new ArrayList<>();
 
     @Override
@@ -112,10 +109,8 @@ public class MainActivity extends AppCompatActivity {
 
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         bottomNav = findViewById(R.id.bottomNav);
-        hiddenWebView = findViewById(R.id.hiddenWebView);
 
         loadLocalData();
-        setupHiddenWebView();
         setupBottomNav();
 
         if (savedInstanceState == null) {
@@ -132,7 +127,9 @@ public class MainActivity extends AppCompatActivity {
         maxDelaySec = Math.max(minDelaySec, prefs.getInt("max_delay", 10));
         postedCount = prefs.getInt("posted_count", 0);
         failedCount = prefs.getInt("failed_count", 0);
-        successStreak = prefs.getInt("success_streak", 0);
+        pageId = prefs.getString("page_id", "");
+        pageAccessToken = prefs.getString("page_access_token", "");
+        pageName = prefs.getString("page_name", "");
 
         groupUrls.clear();
         groupNames.clear();
@@ -251,68 +248,23 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void logoutAccount() {
-        prefs.edit().remove("account_cookies").remove("account_name").apply();
+        prefs.edit()
+                .remove("account_cookies")
+                .remove("account_name")
+                .remove("page_id")
+                .remove("page_access_token")
+                .remove("page_name")
+                .apply();
+        pageId = "";
+        pageAccessToken = "";
+        pageName = "";
         CookieManager cm = CookieManager.getInstance();
         cm.removeAllCookies(null);
         cm.flush();
         mediaUris.clear();
-        addLog("تم تسجيل الخروج ومسح الجلسة");
+        addLog("تم تسجيل الخروج ومسح جلسة WebView وإعدادات الصفحة");
         Toast.makeText(this, R.string.toast_logout, Toast.LENGTH_SHORT).show();
         notifyProgress();
-    }
-
-    @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
-    private void setupHiddenWebView() {
-        WebSettings s = hiddenWebView.getSettings();
-        s.setJavaScriptEnabled(true);
-        s.setDomStorageEnabled(true);
-        s.setUserAgentString(
-                "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 " +
-                "(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36");
-        CookieManager.getInstance().setAcceptCookie(true);
-        CookieManager.getInstance().setAcceptThirdPartyCookies(hiddenWebView, true);
-        hiddenWebView.addJavascriptInterface(new Bridge(), "AndroidBridge");
-        hiddenWebView.setWebViewClient(new WebViewClient() {
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                if (isRunning && currentIndex >= 0 && currentIndex < groupUrls.size()) {
-                    cancelTimeout();
-                    // Longer settle so mobile group composer is fully rendered
-                    handler.postDelayed(() -> injectAndPost(spinText(postText)), DOM_SETTLE_MS);
-                    timeoutRunnable = () -> {
-                        if (isRunning && currentIndex >= 0) {
-                            Log.w(TAG, "Timeout for group index " + currentIndex);
-                            failedCount++;
-                            prefs.edit().putInt("failed_count", failedCount).apply();
-                            addLog("✗ فشل (مهلة) " + (currentIndex + 1) + "/" + groupUrls.size());
-                            scheduleNext();
-                        }
-                    };
-                    handler.postDelayed(timeoutRunnable, PAGE_TIMEOUT_MS);
-                }
-            }
-        });
-        hiddenWebView.setVisibility(View.GONE);
-
-        String c = prefs.getString("account_cookies", "");
-        if (!c.isEmpty()) {
-            CookieManager cm = CookieManager.getInstance();
-            for (String part : c.split(";")) {
-                String p = part.trim();
-                if (!p.isEmpty()) {
-                    cm.setCookie("https://m.facebook.com", p);
-                    cm.setCookie("https://www.facebook.com", p);
-                }
-            }
-            cm.flush();
-        }
-    }
-
-    private void cancelTimeout() {
-        if (timeoutRunnable != null) {
-            handler.removeCallbacks(timeoutRunnable);
-            timeoutRunnable = null;
-        }
     }
 
     private void setupBottomNav() {
@@ -398,204 +350,130 @@ public class MainActivity extends AppCompatActivity {
         dialog.show();
     }
 
-    public void startCampaign(String text, int minD, int maxD) {
-        if (groupUrls.isEmpty()) {
-            Toast.makeText(this, R.string.toast_add_groups, Toast.LENGTH_SHORT).show();
+    public void savePageConnection(String id, String token) {
+        pageId = id == null ? "" : id.trim();
+        pageAccessToken = token == null ? "" : token.trim();
+        pageName = "";
+        prefs.edit()
+                .putString("page_id", pageId)
+                .putString("page_access_token", pageAccessToken)
+                .remove("page_name")
+                .apply();
+        notifyProgress();
+    }
+
+    public boolean hasPageConnection() {
+        return !pageId.isEmpty() && !pageAccessToken.isEmpty();
+    }
+
+    public String getPageConnectionLabel() {
+        if (!hasPageConnection()) return getString(R.string.page_api_not_configured);
+        if (!pageName.isEmpty()) return getString(R.string.page_api_connected, pageName);
+        return getString(R.string.page_api_token_saved);
+    }
+
+    public interface PageVerificationCallback {
+        void onComplete(boolean success, String message);
+    }
+
+    public void verifyPageConnection(PageVerificationCallback callback) {
+        if (!hasPageConnection()) {
+            if (callback != null) callback.onComplete(false, getString(R.string.page_api_missing_credentials));
+            return;
+        }
+        networkExecutor.submit(() -> {
+            FacebookPagesClient.PageResult result = FacebookPagesClient.verifyPage(pageId, pageAccessToken, GRAPH_API_VERSION);
+            handler.post(() -> {
+                if (result.success) {
+                    pageName = result.name;
+                    prefs.edit().putString("page_name", pageName).apply();
+                    addLog("✓ تم التحقق من الصفحة عبر Meta API: " + pageName);
+                } else {
+                    addLog("✗ تعذر التحقق من الصفحة: " + result.message);
+                }
+                notifyProgress();
+                if (callback != null) callback.onComplete(result.success, result.message);
+            });
+        });
+    }
+
+    /**
+     * Publishes exactly one text post through Meta's Pages API and counts success
+     * only when Meta returns a non-empty post ID. No DOM click is treated as success.
+     */
+    public void startPageCampaign(String text) {
+        if (isRunning) {
+            Toast.makeText(this, R.string.toast_already_running, Toast.LENGTH_SHORT).show();
             return;
         }
         if (text == null || text.trim().isEmpty()) {
             Toast.makeText(this, R.string.toast_enter_text, Toast.LENGTH_SHORT).show();
             return;
         }
-        postText = text.trim();
-        minDelaySec = Math.max(5, minD);
-        maxDelaySec = Math.max(minDelaySec, maxD);
-        prefs.edit()
-                .putString("post_text", postText)
-                .putInt("min_delay", minDelaySec)
-                .putInt("max_delay", maxDelaySec)
-                .apply();
+        if (!hasPageConnection()) {
+            Toast.makeText(this, R.string.page_api_missing_credentials, Toast.LENGTH_LONG).show();
+            bottomNav.setSelectedItemId(R.id.nav_accounts);
+            return;
+        }
+        if (!mediaUris.isEmpty()) {
+            Toast.makeText(this, R.string.toast_media_not_supported, Toast.LENGTH_LONG).show();
+            return;
+        }
 
+        postText = text.trim();
+        prefs.edit().putString("post_text", postText).apply();
         isRunning = true;
-        currentIndex = -1;
-        successStreak = 0;
-        addLog("بدء الحملة…");
-        processNext();
+        currentIndex = 0;
+        addLog("بدء نشر فعلي عبر Meta Pages API…");
         Toast.makeText(this, R.string.toast_started, Toast.LENGTH_SHORT).show();
+        notifyProgress();
+
+        final String message = spinText(postText);
+        publishTask = networkExecutor.submit(() -> {
+            FacebookPagesClient.PublishResult result = FacebookPagesClient.publishTextPost(
+                    pageId, pageAccessToken, message, GRAPH_API_VERSION);
+            handler.post(() -> finishPagePublish(result));
+        });
+    }
+
+    private void finishPagePublish(FacebookPagesClient.PublishResult result) {
+        if (!isRunning) return;
+        isRunning = false;
+        if (result.success) {
+            postedCount++;
+            prefs.edit().putInt("posted_count", postedCount).apply();
+            addLog("✓ تم النشر الفعلي على " + (pageName.isEmpty() ? pageId : pageName)
+                    + " — Post ID: " + result.postId);
+            Toast.makeText(this, R.string.toast_real_publish_ok, Toast.LENGTH_LONG).show();
+        } else {
+            failedCount++;
+            prefs.edit().putInt("failed_count", failedCount).apply();
+            addLog("✗ لم يتم النشر عبر Meta API: " + result.message);
+            Toast.makeText(this, getString(R.string.toast_real_publish_failed, result.message), Toast.LENGTH_LONG).show();
+        }
+        notifyProgress();
     }
 
     public void stopCampaign() {
         isRunning = false;
-        cancelTimeout();
+        if (publishTask != null) publishTask.cancel(true);
         addLog("تم الإيقاف بواسطة المستخدم");
         Toast.makeText(this, R.string.toast_stopped, Toast.LENGTH_SHORT).show();
+        notifyProgress();
     }
 
     public void retryFailed() {
         if (isRunning) {
-            Toast.makeText(this, "أوقف الحملة أولاً", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "أوقف النشر أولاً", Toast.LENGTH_SHORT).show();
             return;
         }
         if (postText == null || postText.trim().isEmpty()) {
             Toast.makeText(this, R.string.toast_enter_text, Toast.LENGTH_SHORT).show();
             return;
         }
-        failedCount = 0;
-        prefs.edit().putInt("failed_count", 0).apply();
-        addLog("إعادة محاولة الفاشل — بدء من جديد");
+        addLog("إعادة محاولة النشر الحقيقي عبر Meta API");
         Toast.makeText(this, R.string.toast_retry, Toast.LENGTH_SHORT).show();
-        startCampaign(postText, minDelaySec, maxDelaySec);
-    }
-
-    private void processNext() {
-        if (!isRunning) return;
-        cancelTimeout();
-        currentIndex++;
-        if (currentIndex >= groupUrls.size()) {
-            isRunning = false;
-            addLog("انتهت الحملة — ناجح: " + postedCount + " | فاشل: " + failedCount);
-            handler.post(() -> Toast.makeText(this, R.string.toast_finished, Toast.LENGTH_LONG).show());
-            return;
-        }
-        String url = groupUrls.get(currentIndex);
-        if (!url.startsWith("http")) {
-            url = "https://m.facebook.com/groups/" + url;
-        }
-        // Prefer mobile group composer path
-        if (url.contains("www.facebook.com/groups/")) {
-            url = url.replace("www.facebook.com/groups/", "m.facebook.com/groups/");
-        }
-        addLog("جاري: " + (currentIndex + 1) + "/" + groupUrls.size() + " — " + groupNames.get(currentIndex));
-        Log.i(TAG, "Background load: " + url);
-        hiddenWebView.loadUrl(url);
-    }
-
-    /**
-     * Bulletproof text-only inject + post for m.facebook.com group pages.
-     * - Page-state validation (login wall / join required) before composer search
-     * - Expanded fallback selectors + visibility checks
-     * - Internal retry loop
-     * - Proper focus + input/change events + safe button click
-     */
-    private void injectAndPost(String text) {
-        if (!isRunning) return;
-        String safe = text
-                .replace("\\", "\\\\")
-                .replace("'", "\\'")
-                .replace("\n", "\\n")
-                .replace("\r", "")
-                .replace("\"", "\\\"");
-
-        String js =
-            "(function(){" +
-            "  var MAX_TRIES = 5;" +
-            "  var TRY_GAP = 1100;" +
-            "  var text = '" + safe + "';" +
-            "  var sels = [" +
-            "    'textarea[name=\"xc_message\"]'," +
-            "    'textarea[name=\"message\"]'," +
-            "    'form textarea'," +
-            "    'div[contenteditable=true]'," +
-            "    'div[role=textbox]'," +
-            "    '[contenteditable=true]'," +
-            "    'textarea'," +
-            "    'div[data-testid*=\"composer\"] [contenteditable]'," +
-            "    'div[aria-label*=\"Write\"]'," +
-            "    'div[aria-label*=\"اكتب\"]'," +
-            "    'div[aria-label*=\"Write something\"]'" +
-            "  ];" +
-            "  function pageState(){" +
-            "    var body=(document.body&&document.body.innerText||'').toLowerCase();" +
-            "    var html=(document.documentElement&&document.documentElement.innerHTML||'').toLowerCase();" +
-            "    if(body.indexOf('log in')>=0||body.indexOf('تسجيل الدخول')>=0||html.indexOf('login_form')>=0||html.indexOf('name=\"email\"')>=0) return 'login_required';" +
-            "    if((body.indexOf('join group')>=0||body.indexOf('انضم إلى المجموعة')>=0||body.indexOf('انضم')>=0) && body.indexOf('leave')<0){" +
-            "      var joinBtns=document.querySelectorAll('button,div[role=button],a[role=button]');" +
-            "      for(var i=0;i<joinBtns.length;i++){ var t=((joinBtns[i].innerText||'')+'').toLowerCase(); if(t.indexOf('join')>=0||t.indexOf('انضم')>=0) return 'not_member'; }" +
-            "    }" +
-            "    return 'ok';" +
-            "  }" +
-            "  function findBox(){" +
-            "    for(var i=0;i<sels.length;i++){" +
-            "      var n=document.querySelector(sels[i]);" +
-            "      if(n && n.offsetParent !== null) return n;" +
-            "    }" +
-            "    var all=document.querySelectorAll('div[contenteditable],textarea,[role=textbox]');" +
-            "    for(var k=0;k<all.length;k++){ if(all[k].offsetParent!==null) return all[k]; }" +
-            "    return null;" +
-            "  }" +
-            "  function setText(box, val){" +
-            "    try{ box.focus(); }catch(e){} " +
-            "    var tag=(box.tagName||'').toUpperCase();" +
-            "    if(tag==='TEXTAREA' || tag==='INPUT'){" +
-            "      box.value = val;" +
-            "    } else {" +
-            "      box.innerText = val;" +
-            "      try{ box.textContent = val; }catch(e){} " +
-            "    }" +
-            "    try{" +
-            "      box.dispatchEvent(new Event('input',{bubbles:true}));" +
-            "      box.dispatchEvent(new Event('change',{bubbles:true}));" +
-            "      box.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true}));" +
-            "    }catch(e){} " +
-            "  }" +
-            "  function findPostBtn(){" +
-            "    var all=document.querySelectorAll('button,div[role=button],input[type=submit],a[role=button]');" +
-            "    for(var j=0;j<all.length;j++){" +
-            "      var el=all[j];" +
-            "      var t=((el.innerText||el.value||el.getAttribute('aria-label')||'')+'').trim().toLowerCase();" +
-            "      if(!t) continue;" +
-            "      if(t==='post'||t==='نشر'||t==='share'||t==='مشاركة'||t.indexOf('نشر')>=0||t.indexOf('post')>=0){" +
-            "        if(el.offsetParent!==null) return el;" +
-            "      }" +
-            "    }" +
-            "    return null;" +
-            "  }" +
-            "  function clickBtn(btn){" +
-            "    try{ btn.focus(); }catch(e){} " +
-            "    try{" +
-            "      btn.dispatchEvent(new MouseEvent('mousedown',{bubbles:true}));" +
-            "      btn.dispatchEvent(new MouseEvent('mouseup',{bubbles:true}));" +
-            "      btn.dispatchEvent(new MouseEvent('click',{bubbles:true}));" +
-            "      if(typeof btn.click==='function') btn.click();" +
-            "    }catch(e){ try{ btn.click(); }catch(e2){} }" +
-            "  }" +
-            "  function attempt(tryNo){" +
-            "    try{" +
-            "      var state=pageState();" +
-            "      if(state==='login_required'){ AndroidBridge.onResult(false,'login_required'); return; }" +
-            "      if(state==='not_member'){ AndroidBridge.onResult(false,'not_member'); return; }" +
-            "      var box=findBox();" +
-            "      if(!box){" +
-            "        if(tryNo < MAX_TRIES){ setTimeout(function(){ attempt(tryNo+1); }, TRY_GAP); return; }" +
-            "        AndroidBridge.onResult(false,'no_composer'); return;" +
-            "      }" +
-            "      setText(box, text);" +
-            "      setTimeout(function(){" +
-            "        var btn=findPostBtn();" +
-            "        if(btn){ clickBtn(btn); AndroidBridge.onResult(true,'ok'); }" +
-            "        else { AndroidBridge.onResult(false,'no_button'); }" +
-            "      }, 1700);" +
-            "    }catch(e){ AndroidBridge.onResult(false, String(e)); }" +
-            "  }" +
-            "  attempt(1);" +
-            "})();";
-
-        hiddenWebView.evaluateJavascript(js, null);
-    }
-
-    private void scheduleNext() {
-        if (!isRunning) return;
-        if (successStreak > 0 && successStreak % REST_AFTER_SUCCESS == 0) {
-            addLog(getString(R.string.rest_msg));
-            handler.postDelayed(this::processNext, REST_DURATION_MS);
-            return;
-        }
-        int delay = minDelaySec;
-        if (maxDelaySec > minDelaySec) {
-            delay = minDelaySec + new Random().nextInt(maxDelaySec - minDelaySec + 1);
-        }
-        addLog("انتظار " + delay + " ثانية…");
-        handler.postDelayed(this::processNext, delay * 1000L);
+        startPageCampaign(postText);
     }
 
     private void notifyProgress() {
@@ -614,39 +492,10 @@ public class MainActivity extends AppCompatActivity {
         progressListeners.remove(r);
     }
 
-    public class Bridge {
-        @JavascriptInterface
-        public void onResult(boolean success, String msg) {
-            handler.post(() -> {
-                cancelTimeout();
-                Log.i(TAG, "Post result: " + success + " / " + msg);
-                if (success) {
-                    postedCount++;
-                    successStreak++;
-                    prefs.edit()
-                            .putInt("posted_count", postedCount)
-                            .putInt("success_streak", successStreak)
-                            .apply();
-                    addLog("✓ نجح " + (currentIndex + 1) + "/" + groupUrls.size());
-                } else {
-                    failedCount++;
-                    prefs.edit().putInt("failed_count", failedCount).apply();
-                    String reason = msg;
-                    if ("login_required".equals(msg)) reason = "يتطلب تسجيل دخول";
-                    else if ("not_member".equals(msg)) reason = "لست عضواً في المجموعة";
-                    else if ("no_composer".equals(msg)) reason = "لا يوجد مربع كتابة";
-                    else if ("no_button".equals(msg)) reason = "لا يوجد زر نشر";
-                    addLog("✗ فشل " + (currentIndex + 1) + " (" + reason + ")");
-                }
-                scheduleNext();
-            });
-        }
-    }
-
     private int accountCount() {
         String n = prefs.getString("account_name", "");
         String c = prefs.getString("account_cookies", "");
-        return (n.isEmpty() && c.isEmpty()) ? 0 : 1;
+        return (n.isEmpty() && c.isEmpty() && !hasPageConnection()) ? 0 : 1;
     }
 
     public String getActivityLogText() {
@@ -732,12 +581,9 @@ public class MainActivity extends AppCompatActivity {
                 statF.setText(String.valueOf(act.failedCount));
                 statA.setText(String.valueOf(act.accountCount()));
                 if (act.isRunning) {
-                    status.setText(getString(R.string.status_running) + " " +
-                            (act.currentIndex + 1) + "/" + act.groupUrls.size());
+                    status.setText(R.string.status_real_publish_running);
                     prog.setVisibility(View.VISIBLE);
-                    if (act.groupUrls.size() > 0) {
-                        prog.setProgress(Math.max(0, (act.currentIndex + 1) * 100 / act.groupUrls.size()));
-                    }
+                    prog.setProgress(50);
                 } else {
                     status.setText(R.string.status_idle);
                     prog.setVisibility(View.GONE);
@@ -769,6 +615,9 @@ public class MainActivity extends AppCompatActivity {
             MainActivity act = (MainActivity) requireActivity();
             TextInputEditText name = v.findViewById(R.id.inputAccountName);
             TextInputEditText cookies = v.findViewById(R.id.inputCookies);
+            TextInputEditText pageIdInput = v.findViewById(R.id.inputPageId);
+            TextInputEditText pageTokenInput = v.findViewById(R.id.inputPageToken);
+            TextView pageApiStatus = v.findViewById(R.id.pageApiStatus);
             TextView status = v.findViewById(R.id.accountStatus);
             TextView session = v.findViewById(R.id.sessionIndicator);
             TextView profileId = v.findViewById(R.id.profileIdText);
@@ -776,10 +625,13 @@ public class MainActivity extends AppCompatActivity {
             TextView stP = v.findViewById(R.id.profileStatPosted);
             TextView stF = v.findViewById(R.id.profileStatFailed);
 
+            pageIdInput.setText(act.pageId);
+            pageTokenInput.setText(act.pageAccessToken);
             progressUpdater = () -> {
                 if (!isAdded()) return;
                 name.setText(act.prefs.getString("account_name", ""));
                 cookies.setText(act.prefs.getString("account_cookies", ""));
+                pageApiStatus.setText(act.getPageConnectionLabel());
                 String saved = act.prefs.getString("account_name", "");
                 String cSaved = act.prefs.getString("account_cookies", "");
                 status.setText(saved.isEmpty() ? getString(R.string.account_none) : getString(R.string.account_saved, saved));
@@ -803,7 +655,10 @@ public class MainActivity extends AppCompatActivity {
             v.findViewById(R.id.btnSaveAccount).setOnClickListener(btn -> {
                 String n = name.getText() != null ? name.getText().toString().trim() : "";
                 String c = cookies.getText() != null ? cookies.getText().toString().trim() : "";
+                String pId = pageIdInput.getText() != null ? pageIdInput.getText().toString().trim() : "";
+                String pToken = pageTokenInput.getText() != null ? pageTokenInput.getText().toString().trim() : "";
                 act.prefs.edit().putString("account_name", n).putString("account_cookies", c).apply();
+                act.savePageConnection(pId, pToken);
                 if (!c.isEmpty()) {
                     CookieManager cm = CookieManager.getInstance();
                     for (String part : c.split(";")) {
@@ -820,6 +675,17 @@ public class MainActivity extends AppCompatActivity {
             });
 
             v.findViewById(R.id.btnLoginFb).setOnClickListener(btn -> act.openFacebookLogin());
+            v.findViewById(R.id.btnVerifyPage).setOnClickListener(btn -> {
+                String pId = pageIdInput.getText() != null ? pageIdInput.getText().toString().trim() : "";
+                String pToken = pageTokenInput.getText() != null ? pageTokenInput.getText().toString().trim() : "";
+                act.savePageConnection(pId, pToken);
+                pageApiStatus.setText(R.string.page_api_verifying);
+                act.verifyPageConnection((success, message) -> {
+                    if (!isAdded()) return;
+                    pageApiStatus.setText(success ? act.getPageConnectionLabel() : act.getString(R.string.page_api_error, message));
+                    pageApiStatus.setTextColor(success ? 0xFF22C55E : 0xFFF59E0B);
+                });
+            });
             v.findViewById(R.id.btnLogout).setOnClickListener(btn -> act.logoutAccount());
             return v;
         }
@@ -1108,8 +974,11 @@ public class MainActivity extends AppCompatActivity {
 
             progressUpdater = () -> {
                 if (!isAdded()) return;
-                String state = act.isRunning ? getString(R.string.running) : getString(R.string.ready);
-                info.setText(getString(R.string.campaign_info, act.groupUrls.size(), state));
+                if (act.hasPageConnection()) {
+                    info.setText(act.getPageConnectionLabel());
+                } else {
+                    info.setText(R.string.campaign_page_not_ready);
+                }
                 log.setText(act.getActivityLogText());
                 startBtn.setVisibility(act.isRunning ? View.GONE : View.VISIBLE);
                 stopBtn.setVisibility(act.isRunning ? View.VISIBLE : View.GONE);
@@ -1123,7 +992,7 @@ public class MainActivity extends AppCompatActivity {
                 int minD = 5, maxD = 10;
                 try { minD = Integer.parseInt(minIn.getText().toString()); } catch (Exception ignored) {}
                 try { maxD = Integer.parseInt(maxIn.getText().toString()); } catch (Exception ignored) {}
-                act.startCampaign(t, minD, maxD);
+                act.startPageCampaign(t);
             });
 
             stopBtn.setOnClickListener(btn -> act.stopCampaign());
@@ -1170,10 +1039,14 @@ public class MainActivity extends AppCompatActivity {
                 act.activityLogs.clear();
                 act.mediaUris.clear();
                 act.postText = "";
+                act.pageId = "";
+                act.pageAccessToken = "";
+                act.pageName = "";
                 act.postedCount = 0;
                 act.failedCount = 0;
                 act.successStreak = 0;
                 act.lastLog = "";
+                act.notifyProgress();
                 Toast.makeText(act, R.string.toast_data_cleared, Toast.LENGTH_SHORT).show();
             });
             return v;
@@ -1188,8 +1061,8 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-        cancelTimeout();
-        if (hiddenWebView != null) hiddenWebView.destroy();
+        if (publishTask != null) publishTask.cancel(true);
+        networkExecutor.shutdownNow();
         super.onDestroy();
     }
 }
