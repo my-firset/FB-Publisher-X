@@ -1,0 +1,3 @@
+Publisher X v2.2 — full implementation ready
+Features: long-lived token, WorkManager schedule, manual sequential groups, media publish
+Local build: SUCCESSFUL (assembleDebug) versionCode 9 versionName 2.2
