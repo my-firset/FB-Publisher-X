@@ -43,19 +43,16 @@
     <string name="toast_login_empty">لم يتم العثور على كوكيز — تأكد من تسجيل الدخول</string>
     <string name="toast_logout">تم تسجيل الخروج ومسح الجلسة</string>
     <string name="profile_groups">المجموعات المحملة: %1$d</string>
-    <string name="profile_posted">منشورات ناجحة: %1$d</string>
-    <string name="profile_failed">فاشلة: %1$d</string>
-    <string name="profile_stats_title">إحصائيات سريعة</string>
 
-    <!-- Multi-Page API -->
-    <string name="page_api_title">النشر الحقيقي عبر Meta Pages API</string>
+    <!-- Page API -->
+    <string name="page_api_title">Meta Pages API — التوكن المشترك</string>
+    <string name="page_api_help">الصق Page Access Token ثم أضف معرف كل صفحة. التوكن مشترك لكل الصفحات في القائمة.</string>
     <string name="page_token_label">Access Token (مشترك لكل الصفحات)</string>
-    <string name="page_token_hint">الصق التوكن هنا — يُستخدم لكل الصفحات المحفوظة</string>
-    <string name="page_api_help">أدخل توكن واحد بصلاحية pages_manage_posts، ثم أضف صفحاتك (Page ID + الاسم). الحملة ستنشر على الصفحات المحفوظة فقط.</string>
-    <string name="page_id_label">معرّف الصفحة Page ID</string>
-    <string name="page_id_hint">مثال: 123456789012345</string>
+    <string name="page_token_hint">EAAB…</string>
+    <string name="page_id_label">معرف الصفحة (Page ID)</string>
+    <string name="page_id_hint">أرقام فقط</string>
     <string name="page_name_label">اسم الصفحة (اختياري)</string>
-    <string name="page_name_hint">مثال: صفحتي الرئيسية</string>
+    <string name="page_name_hint">يُحدَّث تلقائياً عند التحقق</string>
     <string name="btn_add_page">إضافة الصفحة للقائمة</string>
     <string name="btn_save_token">حفظ التوكن</string>
     <string name="btn_verify_page">تحقق من الصفحة</string>
@@ -67,50 +64,35 @@
     <string name="page_api_verifying">جاري التحقق من Meta API…</string>
     <string name="page_api_missing_credentials">أدخل التوكن وأضف صفحة واحدة على الأقل</string>
     <string name="page_api_error">تعذر التحقق: %1$s</string>
+    <string name="toast_token_saved">تم حفظ التوكن</string>
     <string name="toast_page_added">تمت إضافة الصفحة</string>
     <string name="toast_page_exists">الصفحة موجودة مسبقاً</string>
-    <string name="toast_enter_page_id">أدخل Page ID</string>
-    <string name="toast_token_saved">تم حفظ التوكن</string>
     <string name="toast_page_removed">تم حذف الصفحة</string>
+    <string name="toast_enter_page_id">أدخل معرف الصفحة</string>
 
-    <!-- Groups (manual only) -->
-    <string name="groups_api_warning">المجموعات: افتح المجموعة وسجّل المنشور يدوياً من داخل فيسبوك. لا يستخدم التطبيق نقرات آلية أو إضافات تتجاوز سياسات Meta.</string>
+    <!-- Groups -->
+    <string name="groups_title">المجموعات</string>
     <string name="btn_open_group_manual">فتح المجموعة للمشاركة اليدوية</string>
-    <string name="btn_close_manual_browser">إغلاق المتصفح</string>
     <string name="group_manual_share_hint">تم نسخ نص الحملة. الصق المحتوى وأضف الوسائط ثم اضغط نشر بنفسك داخل فيسبوك.</string>
-    <string name="groups_title">قائمة المجموعات</string>
-    <string name="hint_group_url">رابط المجموعة أو المعرف (عام أو خاص)</string>
-    <string name="hint_group_name">الاسم المعروض (اختياري)</string>
-    <string name="hint_import_list">الصق قائمة روابط (سطر لكل مجموعة)</string>
-    <string name="btn_add_group">إضافة</string>
-    <string name="btn_import">استيراد قائمة</string>
-    <string name="btn_export">تصدير القائمة</string>
-    <string name="btn_clear_groups">مسح الكل</string>
     <string name="groups_count">%1$d مجموعة محفوظة</string>
-    <string name="toast_enter_url">أدخل الرابط أو المعرف</string>
+    <string name="btn_add_group">إضافة</string>
+    <string name="btn_import">استيراد</string>
+    <string name="btn_clear_groups">مسح</string>
+    <string name="btn_export">تصدير الروابط</string>
+    <string name="toast_enter_url">أدخل رابط أو قائمة</string>
+    <string name="extract_added">أُضيفت %1$d مجموعة</string>
+    <string name="toast_exported">تم النسخ للحافظة</string>
     <string name="toast_groups_cleared">تم مسح المجموعات</string>
-    <string name="toast_exported">تم نسخ القائمة إلى الحافظة</string>
-    <string name="btn_smart_extractor">مستخرج الروابط الذكي</string>
-    <string name="smart_extractor_title">مستخرج الروابط الذكي</string>
-    <string name="smart_extractor_hint">الصق أي نص فوضوي يحتوي على روابط مجموعات فيسبوك (من محادثات، ملاحظات، قوائم مختلطة…). سيستخرج الروابط الصحيحة تلقائياً ويحذف المكرر.</string>
-    <string name="btn_extract">استخراج الروابط</string>
-    <string name="btn_add_to_list">إضافة للقائمة</string>
-    <string name="extract_found">تم العثور على %1$d رابط صحيح</string>
-    <string name="extract_none">لم يتم العثور على روابط مجموعات صالحة</string>
-    <string name="extract_added">تمت إضافة %1$d مجموعة جديدة (تم تجاهل المكرر)</string>
 
     <!-- Campaign -->
-    <string name="campaign_title">إنشاء الحملة</string>
-    <string name="post_text_label">نص المنشور</string>
-    <string name="hint_post_text">اكتب المحتوى… يمكن استخدام SpinTax مثل: {أهلاً|مرحباً|السلام عليكم}</string>
-    <string name="spintax_help">تنويع النصوص (SpinTax): ضع الخيارات بين أقواس مع فاصل | مثل {خيار1|خيار2|خيار3}. يتم توليد نسخة فريدة لكل صفحة تلقائياً.</string>
-    <string name="btn_spintax_info">ما هو SpinTax؟</string>
-    <string name="real_publish_banner">النشر الحقيقي: يرسل النص أو الصور أو فيديو واحد إلى صفحات فيسبوك عبر Meta Pages API. ينشر على كل الصفحات المحفوظة بالتتابع مع التأخير المحدد.</string>
-    <string name="media_label">إرفاق وسائط (صور/فيديو)</string>
-    <string name="btn_pick_media">اختيار من المعرض</string>
+    <string name="campaign_title">الحملة</string>
+    <string name="spintax_help">استخدم {خيار1|خيار2} لتدوير النص تلقائياً.</string>
+    <string name="real_publish_banner">النشر يتم فعلياً عبر Meta Pages API (نص / صور / فيديو).</string>
+    <string name="media_label">الوسائط</string>
+    <string name="btn_pick_media">اختيار صور/فيديو</string>
     <string name="btn_clear_media">مسح الوسائط</string>
-    <string name="media_count">%1$d ملف مرفق</string>
-    <string name="media_preview_empty">لم يتم اختيار وسائط بعد</string>
+    <string name="media_count">%1$d ملف وسائط</string>
+    <string name="media_preview_empty">لا توجد وسائط</string>
     <string name="media_preview_title">معاينة الوسائط</string>
     <string name="media_item_image">صورة: %1$s</string>
     <string name="media_item_video">فيديو: %1$s</string>
@@ -149,5 +131,36 @@
     <string name="btn_clear_data">مسح كل البيانات المحلية</string>
     <string name="toast_settings_saved">تم حفظ الإعدادات</string>
     <string name="toast_data_cleared">تم مسح كل البيانات</string>
-    <string name="app_version">Publisher X v2.1 — Multi-Page Meta API Publishing</string>
+    <string name="app_version">Publisher X v2.2 — Multi-Page Meta API + Scheduling</string>
+
+    <!-- Long-lived token & auto pages -->
+    <string name="token_exchange_title">تبديل توكن طويل الأمد</string>
+    <string name="token_exchange_help">الصق User Access Token قصير الأمد + App ID و App Secret لتحويله إلى توكن ~60 يوم، ثم جلب الصفحات تلقائياً.</string>
+    <string name="hint_user_token">User Access Token (قصير أو طويل)</string>
+    <string name="hint_app_id">App ID</string>
+    <string name="hint_app_secret">App Secret</string>
+    <string name="btn_exchange_token">تبديل إلى توكن طويل الأمد</string>
+    <string name="btn_fetch_pages">جلب الصفحات من التوكن</string>
+    <string name="toast_token_exchanged">تم تبديل التوكن بنجاح</string>
+    <string name="toast_pages_fetched">تم جلب %1$d صفحة</string>
+    <string name="toast_exchange_failed">فشل التبديل: %1$s</string>
+
+    <!-- Scheduling -->
+    <string name="schedule_title">جدولة الحملة</string>
+    <string name="hint_schedule_minutes">التأخير بالدقائق قبل البدء (من 1)</string>
+    <string name="btn_schedule">جدولة النشر</string>
+    <string name="btn_cancel_schedule">إلغاء الجدولة</string>
+    <string name="toast_scheduled">تمت جدولة الحملة بعد %1$d دقيقة</string>
+    <string name="toast_schedule_cancelled">تم إلغاء الجدولة</string>
+    <string name="toast_schedule_missing">أدخل التوكن والصفحات والنص أولاً</string>
+    <string name="schedule_note">الحملات المجدولة نصية فقط (الوسائط غير مدعومة في الخلفية).</string>
+
+    <!-- Manual sequential groups -->
+    <string name="btn_start_manual_seq">بدء فتح المجموعات بالتسلسل</string>
+    <string name="btn_stop_manual_seq">إيقاف التسلسل اليدوي</string>
+    <string name="manual_seq_hint">يفتح كل مجموعة بالترتيب، ينسخ النص، وينتظرك. اضغط «التالي» للمتابعة.</string>
+    <string name="toast_manual_seq_started">بدء التسلسل اليدوي — افتح وانشر بنفسك</string>
+    <string name="toast_manual_seq_done">انتهى التسلسل اليدوي</string>
+    <string name="btn_next_group">المجموعة التالية</string>
+    <string name="manual_progress">مجموعة %1$d من %2$d</string>
 </resources>
