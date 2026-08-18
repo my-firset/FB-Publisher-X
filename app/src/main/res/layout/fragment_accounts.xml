@@ -22,103 +22,7 @@
             android:textStyle="bold"
             android:layout_marginBottom="16dp" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnLoginFb"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:text="@string/btn_login_fb"
-            android:textAllCaps="false"
-            android:textSize="15sp"
-            android:layout_marginBottom="8dp"
-            app:cornerRadius="12dp"
-            app:backgroundTint="@color/primary"
-            app:icon="@android:drawable/ic_menu_share"
-            app:iconGravity="textStart" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnLogout"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="@string/btn_logout"
-            android:textAllCaps="false"
-            android:layout_marginBottom="16dp"
-            app:cornerRadius="12dp"
-            app:backgroundTint="@color/error" />
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:cardBackgroundColor="@color/surface"
-            app:cardCornerRadius="12dp"
-            app:strokeColor="@color/card_stroke"
-            app:strokeWidth="1dp"
-            android:layout_marginBottom="16dp">
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/account_label"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
-                <com.google.android.material.textfield.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    app:boxBackgroundMode="outline"
-                    app:boxStrokeColor="@color/primary">
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/inputAccountName"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="@string/hint_account_name"
-                        android:textColor="@color/on_surface"
-                        android:inputType="text"
-                        android:gravity="start" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <TextView
-                    android:visibility="gone"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/cookies_label"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp"
-                    android:layout_marginTop="16dp" />
-                <com.google.android.material.textfield.TextInputLayout
-                    android:visibility="gone"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    app:boxBackgroundMode="outline"
-                    app:boxStrokeColor="@color/primary">
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/inputCookies"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="@string/hint_cookies"
-                        android:textColor="@color/on_surface"
-                        android:inputType="textMultiLine"
-                        android:minLines="3"
-                        android:gravity="start|top" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnSaveAccount"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:text="@string/btn_save_account"
-                    android:textAllCaps="false"
-                    android:layout_marginTop="16dp"
-                    app:cornerRadius="10dp"
-                    app:backgroundTint="@color/primary" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
+        <!-- Shared Page Access Token -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -150,6 +54,64 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
+                    android:hint="@string/page_token_label"
+                    app:boxBackgroundMode="outline"
+                    app:boxStrokeColor="@color/primary"
+                    app:endIconMode="password_toggle">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/inputPageToken"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="@string/page_token_hint"
+                        android:inputType="textPassword"
+                        android:textColor="@color/on_surface"
+                        android:gravity="start" />
+                </com.google.android.material.textfield.TextInputLayout>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSaveToken"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/btn_save_token"
+                    android:textAllCaps="false"
+                    app:backgroundTint="@color/primary"
+                    app:cornerRadius="10dp" />
+                <TextView
+                    android:id="@+id/pageApiStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/page_api_not_configured"
+                    android:textColor="@color/warning"
+                    android:textSize="13sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Add Page -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="12dp"
+            app:strokeColor="@color/card_stroke"
+            app:strokeWidth="1dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="إضافة صفحة"
+                    android:textColor="@color/on_surface"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
                     android:hint="@string/page_id_label"
                     app:boxBackgroundMode="outline"
                     app:boxStrokeColor="@color/primary">
@@ -166,38 +128,73 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:hint="@string/page_token_label"
+                    android:hint="@string/page_name_label"
                     app:boxBackgroundMode="outline"
-                    app:boxStrokeColor="@color/primary"
-                    app:endIconMode="password_toggle">
+                    app:boxStrokeColor="@color/primary">
                     <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/inputPageToken"
+                        android:id="@+id/inputPageName"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/page_token_hint"
-                        android:inputType="textPassword"
+                        android:hint="@string/page_name_hint"
+                        android:inputType="text"
                         android:textColor="@color/on_surface"
                         android:gravity="start" />
                 </com.google.android.material.textfield.TextInputLayout>
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnVerifyPage"
+                    android:id="@+id/btnAddPage"
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
                     android:layout_marginTop="12dp"
-                    android:text="@string/btn_verify_page"
+                    android:text="@string/btn_add_page"
                     android:textAllCaps="false"
                     app:backgroundTint="@color/secondary"
                     app:cornerRadius="10dp" />
-                <TextView
-                    android:id="@+id/pageApiStatus"
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnVerifyPage"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text="@string/page_api_not_configured"
-                    android:textColor="@color/warning"
-                    android:textSize="13sp" />
+                    android:layout_height="48dp"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/btn_verify_page"
+                    android:textAllCaps="false"
+                    app:backgroundTint="@color/primary"
+                    app:cornerRadius="10dp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/pages_list_title"
+            android:textColor="@color/on_surface"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/pagesCount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/pages_count"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            android:layout_marginBottom="8dp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerPages"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:nestedScrollingEnabled="false"
+            android:layout_marginBottom="16dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnLogout"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="@string/btn_logout"
+            android:textAllCaps="false"
+            android:layout_marginBottom="8dp"
+            app:cornerRadius="12dp"
+            app:backgroundTint="@color/error" />
 
         <TextView
             android:id="@+id/accountStatus"
@@ -205,56 +202,55 @@
             android:layout_height="wrap_content"
             android:text="@string/account_none"
             android:textColor="@color/text_secondary"
-            android:textSize="14sp" />
+            android:textSize="14sp"
+            android:visibility="gone" />
 
+        <!-- Hidden legacy fields kept for compatibility -->
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/inputAccountName"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/inputCookies"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSaveAccount"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnLoginFb"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
         <TextView
             android:id="@+id/sessionIndicator"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/session_inactive"
-            android:textColor="@color/warning"
-            android:textSize="13sp"
-            android:layout_marginTop="8dp" />
-
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
         <TextView
             android:id="@+id/profileIdText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/profile_id_none"
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp"
-            android:layout_marginTop="8dp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/profile_stats_title"
-            android:textColor="@color/on_surface"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            android:layout_marginTop="20dp"
-            android:layout_marginBottom="8dp" />
-
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
         <TextView
             android:id="@+id/profileStatGroups"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp" />
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
         <TextView
             android:id="@+id/profileStatPosted"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp"
-            android:layout_marginTop="4dp" />
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
         <TextView
             android:id="@+id/profileStatFailed"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp"
-            android:layout_marginTop="4dp" />
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
 
     </LinearLayout>
 </ScrollView>
